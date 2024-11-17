@@ -1,4 +1,4 @@
-Una vez copiado el git, hacer un .env con el uri de mongo
+Una vez copiado el git, hacer un .env en la carpeta con el uri de mongo
 
 `MONGO_URI=mongodb+srv://user:pass@cluster0.ku9m1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
