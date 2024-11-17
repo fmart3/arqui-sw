@@ -1,0 +1,48 @@
+services:
+  soabus:
+    image: jrgiadach/soabus:v1
+    container_name: soabus
+    ports:
+      - "5000:5000"
+    networks:
+      - soa
+
+  nodejs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nodejs-service
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    networks:
+      - soa  # Conexión a la misma red
+    depends_on:
+      - soabus
+      - rabbitmq
+      - mongo  # Dependencia de MongoDB
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: rabbitmq
+    ports:
+      - "15672:15672" # Puerto de administración web
+      - "5672:5672"   # Puerto de conexión AMQP
+    networks:
+      - soa
+    environment:
+      RABBITMQ_DEFAULT_USER: your_username    # Establece el nombre de usuario
+      RABBITMQ_DEFAULT_PASS: your_password
+
+  mongo:  # Servicio MongoDB
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017" # Puerto de MongoDB
+    networks:
+      - soa
+
+networks:
+  soa:
+    external: true  # Aseguramos que la red externa 'soa' se use
