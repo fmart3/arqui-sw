@@ -47,20 +47,15 @@ Este archivo permite que el cliente interactúe con el bus para enviar los datos
 
 - cada carpeta debe tener un archivo .env.
 
-este es el archivo .env para el servicio de base de datos:
-DB_HOST=localhost
-DB_USER=user
-DB_PASSWORD=password
-DB_NAME=db1
-DB_PORT=3306
-BUS_HOST=localhost
-BUS_PORT=5000
+este es el archivo .env para el servicio de base de datos: ver en archivo desarrollo en el drive
 
 para los otros componenetes, el archivo .env es el siguiente:
 BUS_HOST=localhost
 BUS_PORT=5000
 
 - se debe tener un archivo que maneje la logica.
+
+---
 
 - para iniciar base de datos:
 // carpeta db
@@ -73,6 +68,8 @@ docker-compose up -d
 4. USE db1;
 5. escribir lo que se quiere en sql
 
+---
+
 - para utilizar proyecto:
 1. clonar repo o ponerse al día con el repo
 2. npm install
@@ -80,6 +77,8 @@ docker-compose up -d
 4. levantar bus
 5. levantar base de datos
 6. npm run dev en cada carpeta de cada componente
+
+---
 
 - el servicio de base de datos, recibe una query y entrega las respuestas de la siguiente forma:
 
@@ -91,7 +90,10 @@ en el contenido de el mensaje (despues de datab que es nombre del servicio), el 
 
 entonces si hacen consultas y reciben un 0, no hay datos, pero si es un 1, el servicio devuelve un arreglo de los resultados
 
+---
+
 - ejemplo de consola de cliente:
+
 1. Iniciar sesión
 9. Cerrar programa
 
@@ -118,6 +120,7 @@ Acceso concedido. Aquí iría la lógica para el menú principal.
 ---
 
 - ejemplo de consola de auth service:
+
 [Service] Mensaje recibido del bus: 00039login{"rut":"admin","password":"admin"}
 
 
