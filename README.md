@@ -80,3 +80,57 @@ docker-compose up -d
 4. levantar bus
 5. levantar base de datos
 6. npm run dev en cada carpeta de cada componente
+
+- el servicio de base de datos, recibe una query y entrega las respuestas de la siguiente forma:
+
+[Service] Enviando respuesta al bus: 00111datab1[{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}]
+
+en el contenido de el mensaje (despues de datab que es nombre del servicio), el primer caracter indica un 1 si se encontró algo, y despues el arreglo de resultados, o un 0 si no se encontró datos:
+
+[Service] Enviando respuesta al bus: 00030datab0No se encontraron datos.
+
+entonces si hacen consultas y reciben un 0, no hay datos, pero si es un 1, el servicio devuelve un arreglo de los resultados
+
+- ejemplo de consola de cliente:
+1. Iniciar sesión
+9. Cerrar programa
+
+Seleccione una opción: 1
+Ingrese su RUT (sin puntos ni guión): admin
+Ingrese su contraseña: admin
+
+-----------------------------
+Conectado al bus.
+Enviando al bus: 00039login{"rut":"admin","password":"admin"}
+Respuesta del bus: {
+  largo: 111,
+  servicio: 'login',
+  estado: 'OK',
+  contenido: '1{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}'
+}
+Desconectado del bus.
+-----------------------------
+
+Inicio de sesión exitoso.
+
+Acceso concedido. Aquí iría la lógica para el menú principal.
+
+- falta implementar la logica dcel menu principal y se comentan los loga, que ahora son de prueba
+
+- ejemplo de consola de auth service:
+[Service] Mensaje recibido del bus: 00039login{"rut":"admin","password":"admin"}
+
+-----------------------------
+Conectado al bus.
+Enviando al bus: 00123databSELECT rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = 'admin' AND password = 'admin'
+Respuesta del bus: {
+  largo: 113,
+  servicio: 'datab',
+  estado: 'OK',
+  contenido: '1[{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}]'
+}
+Desconectado del bus.
+-----------------------------
+
+[Service] Enviando respuesta al bus: 00109login1{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}
+-----------------------------
