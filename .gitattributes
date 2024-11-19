@@ -1,0 +1,9 @@
+# Convertir todo a LF al guardar en el repositorio
+* text=auto
+
+# Mantener CRLF en binarios
+*.exe binary
+*.dll binary
+
+# Configuración personalizada para archivos JSON
+*.json text eol=lf
