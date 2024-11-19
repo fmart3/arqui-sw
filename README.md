@@ -99,7 +99,6 @@ Seleccione una opción: 1
 Ingrese su RUT (sin puntos ni guión): admin
 Ingrese su contraseña: admin
 
------------------------------
 Conectado al bus.
 Enviando al bus: 00039login{"rut":"admin","password":"admin"}
 Respuesta del bus: {
@@ -109,7 +108,6 @@ Respuesta del bus: {
   contenido: '1{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}'
 }
 Desconectado del bus.
------------------------------
 
 Inicio de sesión exitoso.
 
@@ -117,10 +115,12 @@ Acceso concedido. Aquí iría la lógica para el menú principal.
 
 - falta implementar la logica dcel menu principal y se comentan los loga, que ahora son de prueba
 
+---
+
 - ejemplo de consola de auth service:
 [Service] Mensaje recibido del bus: 00039login{"rut":"admin","password":"admin"}
 
------------------------------
+
 Conectado al bus.
 Enviando al bus: 00123databSELECT rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = 'admin' AND password = 'admin'
 Respuesta del bus: {
@@ -130,7 +130,6 @@ Respuesta del bus: {
   contenido: '1[{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}]'
 }
 Desconectado del bus.
------------------------------
+
 
 [Service] Enviando respuesta al bus: 00109login1{"rut":"admin","nombres":"admin","apellido_paterno":"admin","apellido_materno":"admin","cargo":"admin"}
------------------------------
