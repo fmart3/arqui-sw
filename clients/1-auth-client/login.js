@@ -14,6 +14,7 @@ async function iniciarMenuSesion() {
     case '1':
       const login = await iniciarSesion();
       if (login) {
+        console.log('\nHola', user);
         await admissionMenu(login);
         console.log('\nSesión cerrada. Volviendo al inicio de sesión...');
         await iniciarMenuSesion();
