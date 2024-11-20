@@ -18,7 +18,7 @@ async function procesarMensaje(contenido) {
     }
 
     // Construir el query
-    const query = `SELECT rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${data.rut}' AND password = '${data.password}'`;
+    const query = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${data.rut}' AND password = '${data.password}'`;
     //console.log(`Enviando query al servicio de base de datos:`, query);
 
     // Enviar el query al servicio de base de datos
