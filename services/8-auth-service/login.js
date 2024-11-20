@@ -6,49 +6,58 @@ const { enviarAlBus } = require('./configClient');
  * @returns {Promise<string>} - Respuesta para el cliente.
  */
 async function procesarMensaje(contenido) {
-  //console.log(`[Login] Procesando contenido: ${contenido}`);
-
   try {
     const data = JSON.parse(contenido);
 
-    // Verificar que los campos necesarios estén presentes
-    if (!data.rut || !data.password) {
-      //console.log(`[Login] Datos incompletos en la solicitud.`);
-      throw new Error('Faltan campos obligatorios.');
-    }
+    if (data.accion === 'registrar') {
+      return await registrarUsuario(data);
+    } 
 
-    // Construir el query
-    const query = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${data.rut}' AND password = '${data.password}'`;
-    //console.log(`Enviando query al servicio de base de datos:`, query);
-
-    // Enviar el query al servicio de base de datos
-    const respuestaDB = await enviarAlBus('datab', query);
-
-    // Validar respuesta de la base de datos
-    if (!respuestaDB || respuestaDB[0] === '0') {
-      //console.log(`[Login] Credenciales incorrectas para RUT: ${data.rut}`);
-      return 'Credenciales incorrectas.';
-    }
-
-    // Parsear los datos recibidos de la base de datos
-    const datos = JSON.parse(respuestaDB.slice(1)); // Quitar el estado (1 o 0) al inicio
-    //console.log(`[Login] Datos recibidos de la base de datos:`, datos);
-
-    // Verificar que los datos sean válidos y que exista al menos un usuario
-    if (Array.isArray(datos) && datos.length > 0) {
-      const usuario = datos[0]; // Usualmente solo se obtiene un usuario en un login
-      //console.log(`[Login] Usuario encontrado:`, usuario);
-
-      return usuario;
-    } else {
-      console.log(`[Login] No se encontró usuario para RUT: ${data.rut}`);
-      return 'Credenciales incorrectas.';
-    }
+    return await autenticarUsuario(data);
   } catch (error) {
-    //console.error(`[Login] Error procesando mensaje: ${error.message}`);
     return `Error procesando solicitud: ${error.message}`;
   }
 }
+
+async function registrarUsuario(data) {
+  const query = `INSERT INTO Usuario (rut, nombres, apellido_paterno, apellido_materno, cargo, password, estado) VALUES 
+    ('${data.usuario.rut}', '${data.usuario.nombres}', '${data.usuario.apellido_paterno}', '${data.usuario.apellido_materno}', 
+    '${data.usuario.cargo}', '${data.usuario.password}', 1)`;
+
+  const respuestaDB = await enviarAlBus('datab', query);
+
+  if (!respuestaDB || respuestaDB[0] !== '1') {
+    return 'Error al registrar el usuario.';
+  }
+
+  // Consulta para obtener el usuario recién registrado
+  const queryGetUser = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${data.usuario.rut}'`;
+  const respuestaGetUser = await enviarAlBus('datab', queryGetUser);
+
+  if (!respuestaGetUser || respuestaGetUser[0] === '0') {
+    return 'Error al obtener el usuario registrado.';
+  }
+
+  const usuario = JSON.parse(respuestaGetUser.slice(1));
+  return usuario[0];
+}
+
+
+async function autenticarUsuario(data) {
+  const query = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${data.rut}' AND password = '${data.password}'`;
+  const respuestaDB = await enviarAlBus('datab', query);
+
+  if (!respuestaDB || respuestaDB[0] === '0') {
+    return 'Credenciales incorrectas.';
+  }
+
+  const datos = JSON.parse(respuestaDB.slice(1));
+  if (Array.isArray(datos) && datos.length > 0) {
+    return datos[0]; // Retorna el usuario autenticado
+  }
+  return 'Credenciales incorrectas.';
+}
+
 
 module.exports = {
   procesarMensaje,
