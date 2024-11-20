@@ -1,5 +1,8 @@
 const { enviarAlBus } = require('./configClient');
 
+const servicioCateg = 'categ';
+const servicioDataB = 'datab'
+
 /**
  * Procesa una solicitud de inicio de sesión.
  * @param {string} contenido - JSON con `rut` y `password`.
@@ -37,21 +40,38 @@ async function consultarPaciente(data) {
       throw new Error('Faltan campos obligatorios. rut');
     }
 
-    const query = `SELECT * FROM paciente WHERE rut = ${rut}`
+    // Consultar datos del paciente
+    const queryPaciente = `SELECT * FROM paciente WHERE rut = '${rut}'`;
+    const respuestaPaciente = await enviarAlBus(servicioDataB, queryPaciente);
 
-    const respuesta = await enviarAlBus('datab', query);
-
-    if (!respuesta || respuesta[0] === '0') {
-      return 'No hay paciente en el sistema.'
+    if (!respuestaPaciente || respuestaPaciente[0] === '0') {
+      return 'No hay paciente en el sistema.';
     }
 
-    // Parsear los datos recibidos de la base de datos
-    const datos = JSON.parse(respuesta.slice(1));
+    const paciente = JSON.parse(respuestaPaciente.slice(1))[0];
 
-    if (Array.isArray(datos) && datos.length > 0) {
-      const paciente = datos[0];
-      return paciente;
+    // Consultar última admisión del paciente
+    const queryAdmision = `
+      SELECT * FROM admision 
+      WHERE id_paciente = ${paciente.id} 
+      ORDER BY fecha_llegada DESC, hora_llegada DESC LIMIT 1
+    `;
+    const respuestaAdmision = await enviarAlBus(servicioDataB, queryAdmision);
+
+    let admision = JSON.parse(respuestaAdmision.slice(1))[0];
+    if (respuestaAdmision && respuestaAdmision[0] !== '0' && admision != undefined) {
+    } else {
+      admision = { mensaje: 'El paciente no ha sido admitido previamente.' };
     }
+
+    // Devolver paciente y admisión
+    return {
+      paciente: {
+        ...paciente,
+        pertenencia_cesfam: paciente.pertenencia_cesfam ? 'Sí' : 'No',
+      },
+      admision,
+    };
   } catch (error) {
     return `Error consultando paciente: ${error.message}`;
   }
@@ -76,7 +96,7 @@ async function admitirPaciente(data) {
     // Aquí corregimos la interpolación de los valores de la query
     const query = `INSERT INTO admision (id_paciente, id_personal_admision, motivo, estado, fecha_llegada, hora_llegada) VALUES (${id_paciente}, ${id_personal_admision}, '${motivo}', ${estado}, ${fecha_llegada}, ${hora_llegada})`;
 
-    const respuesta = await enviarAlBus('datab', query);
+    const respuesta = await enviarAlBus(servicioDataB, query);
 
     if (!respuesta || respuesta[0] === '0') {
       return 'No se hizo admisión.';
@@ -86,12 +106,13 @@ async function admitirPaciente(data) {
 
     const queryAdmision = 'SELECT * FROM admision ORDER BY fecha_llegada DESC, hora_llegada DESC LIMIT 1';
 
-    const respuestaAdmision = await enviarAlBus('datab', queryAdmision);
+    const respuestaAdmision = await enviarAlBus(servicioDataB, queryAdmision);
 
     const datos = JSON.parse(respuestaAdmision.slice(1));
 
     if (Array.isArray(datos) && datos.length > 0) {
       const admision = datos[0];
+      await aCategorizacion(admision);
       return admision;
     }
   } catch (error) {
@@ -123,7 +144,7 @@ async function registrarPaciente(data) {
       )
     `;
 
-    const respuesta = await enviarAlBus('datab', query); // Enviar consulta a la base de datos
+    const respuesta = await enviarAlBus(servicioDataB, query); // Enviar consulta a la base de datos
 
     if (!respuesta || respuesta[0] === '0') {
       return 'Error al registrar paciente.';
@@ -131,7 +152,7 @@ async function registrarPaciente(data) {
 
     // Si la inserción fue exitosa, obtener el último paciente registrado
     const queryUltimoPaciente = 'SELECT * FROM paciente ORDER BY id DESC LIMIT 1';
-    const respuestaPaciente = await enviarAlBus('datab', queryUltimoPaciente);
+    const respuestaPaciente = await enviarAlBus(servicioDataB, queryUltimoPaciente);
 
     if (!respuestaPaciente || respuestaPaciente[0] === '0') {
       return 'No se pudo obtener el paciente registrado.';
@@ -148,6 +169,9 @@ async function registrarPaciente(data) {
   }
 }
 
+async function aCategorizacion(admision) {
+
+}
 
 module.exports = {
   procesarMensaje,
