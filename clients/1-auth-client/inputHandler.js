@@ -24,8 +24,28 @@ function clearLastLine() {
     process.stdout.clearLine(1);
 }
 
+function preguntaConConfirmacion(prompt, mensajeConfirmacion) {
+    return new Promise(async (resolve) => {
+        while (true) {
+            const respuesta = await pregunta(prompt);
+            const confirmacion = await pregunta('(Enter para confirmar, Otro para reescribir)\n');
+            if (confirmacion.trim() === '') {
+                resolve(respuesta);
+                break;
+            }
+        }
+    });
+}
+
+async function obtenerDatoConConfirmacion(prompt) {
+    return await preguntaConConfirmacion(prompt, '¿Es correcto el dato?');
+}
+
+
 module.exports = {
     rl,
     pregunta,
     cerrarInput,
+    clearLastLine,
+    obtenerDatoConConfirmacion, // Nueva función exportada
 };
