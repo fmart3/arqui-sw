@@ -1,10 +1,16 @@
-const { pregunta } = require('./inputHandler');
+const { pregunta, obtenerDatoConConfirmacion } = require('./inputHandler');
 const { enviarAlBus } = require('./configClient');
 
 const servicioAdmision = 'admis'; // Servicio específico para login
 
+const estadoAdmisiones = {
+  0: 'No admitido',
+  1: 'Admitido',
+  2: 'En espera de categorización',
+  3: 'Alta',
+};
+
 async function admissionMenu(user) {
-  console.log('\nHola', user);
   console.log('\n--- Admisión de Pacientes ---\n');
   console.log('1. Consultar paciente');
   console.log('9. Volver al menú principal');
@@ -13,43 +19,83 @@ async function admissionMenu(user) {
 
   switch (opcion.trim()) {
     case '1':
-      const  paciente = await consultarPaciente();
-      if (paciente) { // hay paciente
-        //console.log('access');
+      const paciente = await consultarPaciente();
+      if (paciente) { // Admitir solo si el usuario elige sí
         await admitirPaciente(user, paciente);
-        //admissionMenu(user);
       } else {
-        //registrarPaciente(); // Vuelve al menú si el login falla
-        await registrarPaciente(user);
+        await admissionMenu(user);
       }
       break;
     case '9':
-      return; // Volver al menú principal
+      console.log('Volviendo al menú de inicio de sesión...');
+      return; // Termina el menú de admisión y regresa al flujo principal
     default:
       console.log('\nOpción no válida.');
-      admissionMenu(user);
+      await admissionMenu(user);
   }
 }
 
 async function consultarPaciente() {
   const rut = await pregunta('Ingrese el RUT del paciente (Sin puntos ni guión): ');
-  
+
   const contenido = await enviarAlBus(servicioAdmision, { accion: 'consultar', rut });
   const estado = contenido[0];
 
   if (estado === '1') {
-    paciente = JSON.parse(contenido.substring(1))
-    console.log('Paciente encontrado:', paciente);
-    return paciente;
+    const respuesta = JSON.parse(contenido.substring(1));
+    const paciente = respuesta.paciente;
+    const admision = respuesta.admision;
+
+    console.log('\nPaciente encontrado:\n');
+    console.log(' RUT:', paciente.rut);
+    console.log(' Nombres:', paciente.nombres);
+    console.log(' Apellido Paterno:', paciente.apellido_paterno);
+    console.log(' Apellido Materno:', paciente.apellido_materno);
+    console.log(' Fecha de Nacimiento:', paciente.fecha_nacimiento);
+    console.log(' Sexo:', paciente.sexo);
+    console.log(' Prevision:', paciente.prevision);
+    console.log(' Telefono:', paciente.telefono);
+    console.log(' Correo electrónico:', paciente.correo_electronico);
+    console.log(' Direccion:', paciente.direccion);
+    console.log(' Nacionalidad:', paciente.nacionalidad);
+    console.log(' Pertenece al CESFAM:', paciente.pertenencia_cesfam ? 'Sí' : 'No');
+
+    if (admision.mensaje) {
+      console.log('\nÚltima admisión:\n', admision.mensaje);
+    } else {
+      console.log('\nÚltima admisión:\n');
+      console.log(' Motivo:', admision.motivo);
+      console.log(' Estado:', estadoAdmisiones[admision.estado]);
+      console.log(' Fecha:', admision.fecha_llegada);
+      console.log(' Hora:', admision.hora_llegada);
+    }
+
+    // Preguntar si desea admitir al paciente
+    const admitir = await pregunta('\n¿Desea admitir a este paciente? (1: Sí, Otro: No): ');
+    if (admitir.trim() === '1') {
+      return paciente;
+    } else {
+      console.log('Volviendo al menú de admisión...');
+      return false;
+    }
   } else {
     console.log('Paciente no registrado.');
-    return false;
+
+    // Preguntar si desea registrar al paciente
+    const registrar = await pregunta('\n¿Desea registrar a este paciente? (1: Sí, Otro: No): ');
+    if (registrar.trim() === '1') {
+      // Registrar al paciente
+      return await registrarPacienteFlow(rut);
+    } else {
+      console.log('Volviendo al menú de admisión...');
+      return false;
+    }
   }
 }
 
 async function admitirPaciente(user, paciente) {
   const user_id = user.id;
-  const motivo = await pregunta('Ingrese el Motivo de visita del paciente: ');
+  const motivo = await obtenerDatoConConfirmacion('\n+ Ingrese el Motivo de visita del paciente: ');
 
   // Verificar que el paciente tiene un ID válido
   if (!paciente || !paciente.id) {
@@ -69,26 +115,29 @@ async function admitirPaciente(user, paciente) {
 
   if (estado === '1') {
     const admision = JSON.parse(contenido.substring(1));
-    console.log('Paciente admitido:', admision);
+    console.log('\nPaciente admitido:\n');
+    console.log(' Motivo:', admision.motivo);
+    console.log(' Estado:', estadoAdmisiones[admision.estado]);
+    console.log(' Fecha:', admision.fecha_llegada);
+    console.log(' Hora:', admision.hora_llegada);
   } else {
     console.log('Paciente no se pudo admitir.');
   }
   await admissionMenu(user);
 }
 
-async function registrarPaciente(user) {
-  const rut = await pregunta('Ingrese RUT (Sin puntos ni guión): ');
-  const nombres = await pregunta('Nombres: ');
-  const apellido_paterno = await pregunta('Apellido paterno: ');
-  const apellido_materno = await pregunta('Apellido materno: ');
-  const fecha_nacimiento = await pregunta('Fecha de nacimiento (YYYY-MM-DD): ');
-  const sexo = await pregunta('Sexo (M/F): ');
-  const prevision = await pregunta('Previsión: ');
-  const telefono = await pregunta('Teléfono: ');
-  const correo_electronico = await pregunta('Correo electrónico: ');
-  const direccion = await pregunta('Dirección: ');
-  const nacionalidad = await pregunta('Nacionalidad: ');
-  const pertenencia_cesfam = (await pregunta('¿Pertenece al CESFAM? (S/N): ')).toLowerCase() === 's';
+async function registrarPacienteFlow(rut) {
+  const nombres = await obtenerDatoConConfirmacion('+ Nombres: ');
+  const apellido_paterno = await obtenerDatoConConfirmacion('+ Apellido paterno: ');
+  const apellido_materno = await obtenerDatoConConfirmacion('+ Apellido materno: ');
+  const fecha_nacimiento = await obtenerDatoConConfirmacion('+ Fecha de nacimiento (YYYY-MM-DD): ');
+  const sexo = await obtenerDatoConConfirmacion('+ Sexo (M/F): ');
+  const prevision = await obtenerDatoConConfirmacion('+ Previsión: ');
+  const telefono = await obtenerDatoConConfirmacion('+ Teléfono: ');
+  const correo_electronico = await obtenerDatoConConfirmacion('+ Correo electrónico: ');
+  const direccion = await obtenerDatoConConfirmacion('+ Dirección: ');
+  const nacionalidad = await obtenerDatoConConfirmacion('+ Nacionalidad: ');
+  const pertenencia_cesfam = (await obtenerDatoConConfirmacion('+ ¿Pertenece al CESFAM? (S/N): ')).toLowerCase() === 's';
 
   const paciente = {
     rut,
@@ -111,13 +160,31 @@ async function registrarPaciente(user) {
   if (respuesta.startsWith('1')) {
     // Extraer el objeto paciente registrado desde la respuesta
     const pacienteRegistrado = JSON.parse(respuesta.slice(1)); // Convertir el JSON a objeto
-    console.log('Paciente registrado exitosamente:', pacienteRegistrado);
+    console.log('\nPaciente registrado:\n');
+    console.log(' RUT:', pacienteRegistrado.rut);
+    console.log(' Nombres:', pacienteRegistrado.nombres);
+    console.log(' Apellido Paterno:', pacienteRegistrado.apellido_paterno);
+    console.log(' Apellido Materno:', pacienteRegistrado.apellido_materno);
+    console.log(' Fecha de Nacimiento:', pacienteRegistrado.fecha_nacimiento);
+    console.log(' Sexo:', pacienteRegistrado.sexo);
+    console.log(' Prevision:', pacienteRegistrado.prevision);
+    console.log(' Telefono:', pacienteRegistrado.telefono);
+    console.log(' Correo electrónico:', pacienteRegistrado.correo_electronico);
+    console.log(' Direccion:', pacienteRegistrado.direccion);
+    console.log(' Nacionalidad:', pacienteRegistrado.nacionalidad);
+    console.log(' Pertenece al CESFAM:', pacienteRegistrado.pertenencia_cesfam ? 'Sí' : 'No');
 
-    // Pasar el paciente registrado a la función admitirPaciente
-    await admitirPaciente(user, pacienteRegistrado);
+    // Preguntar si desea admitir al paciente
+    const admitir = await pregunta('\n¿Desea admitir a este paciente? (1: Sí, Otro: No): ');
+    if (admitir.trim() === '1') {
+      return pacienteRegistrado;
+    } else {
+      console.log('Paciente registrado pero no admitido.');
+      return false;
+    }
   } else {
     console.error('Error al registrar paciente:', respuesta.slice(1));
-    await admissionMenu(user);
+    return false;
   }
 }
 
