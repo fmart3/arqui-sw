@@ -6,21 +6,19 @@ const sequelize = require('./db');
  * @returns {Promise<Object|string>} - Resultado de la consulta o mensaje de error.
  */
 async function procesarQuery(query) {
-  //console.log(`\n[Database] Query recibida: ${query}`);
-
   try {
     const [results] = await sequelize.query(query);
 
+    // Si los resultados contienen filas (para SELECT, UPDATE, DELETE)
     if (results.length > 0) {
-      //console.log(`[Database] Query exitosa. Datos encontrados.`);
-      return results; // Retorna todos los resultados
+      return results;
     } else {
-      //console.log(`[Database] No se encontraron datos.`);
-      return 'No se encontraron datos.';
+      // Si no se encontraron resultados, pero la operación fue exitosa
+      return {message: 'Operación ejecutada con éxito, pero no se encontraron datos.' };
     }
   } catch (err) {
-    //console.error(`[Database] Error ejecutando query: ${err.message}`);
-    return `Error ejecutando query: ${err.message}`;
+    // Si ocurre un error en la ejecución de la query
+    return `Error ejecutando la consulta: ${err.message}`;
   }
 }
 
