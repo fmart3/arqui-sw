@@ -1,8 +1,9 @@
 const { pregunta, obtenerDatoConConfirmacion } = require('./inputHandler');
 const { sendMessage } = require('./configClient');
 
-const servicioAdmision = 'admis'; // Servicio específico para admisión
 
+const servicioAdmision = 'admis'; // Servicio específico para admisión
+const SERVICIO = 'login';
 const estadoAdmisiones = {
   0: 'No admitido',
   1: 'Admitido',
@@ -10,42 +11,57 @@ const estadoAdmisiones = {
   3: 'Alta',
 };
 
+
 async function admissionMenu(user) {
   while (true) {
     console.log('\n--- Admisión de Pacientes ---\n');
     console.log('1. Consultar paciente');
     console.log('9. Volver al menú principal');
 
+
     const opcion = await pregunta('\nSeleccione una opción: ');
-
-    switch (opcion.trim()) {
-      case '1':
-        const paciente = await consultarPaciente();
-        if (paciente) {
-          await admitirPaciente(user, paciente);
-        }
-        break;
-
-      case '9':
-        console.log('Volviendo al menú principal...');
-        return; // Termina el menú de admisión y regresa al flujo principal
-
-      default:
-        console.clear();
-        console.log('Opción no válida. Intente nuevamente.');
+    try {
+      switch (opcion.trim()) {
+        case '1':
+          const paciente = await consultarPaciente();
+          if (paciente) {
+            await admitirPaciente(user, paciente);
+          }
+          break;
+ 
+        case '9':
+          await logout(user);
+          console.log('Volviendo al menú principal...');
+          return; // Termina el menú de admisión y regresa al flujo principal
+ 
+        default:
+          console.clear();
+          console.log('Opción no válida. Intente nuevamente.');
+      }
+    } catch (error) {
+      throw new Error('Error en el menú de admisión:', error.message);
     }
+   
   }
 }
 
+
 async function consultarPaciente() {
   const rut = await pregunta('Ingrese el RUT del paciente (Sin puntos ni guión): ');
+ 
+  if (!/^\d{7,8}[0-9kK]$/.test(rut)) {
+    console.log('Formato de RUT inválido. Intente nuevamente.');
+    return false;
+  }
+
 
   try {
     const respuesta = await sendMessage(servicioAdmision, 'consultar', { rut });
-
+   
     if (respuesta) {
       const { paciente, admision } = respuesta;
       mostrarDatosPaciente(paciente, admision);
+
 
       const admitir = await pregunta('\n¿Desea admitir a este paciente? (1: Sí, Otro: No): ');
       if (admitir.trim() === '1') {
@@ -58,6 +74,7 @@ async function consultarPaciente() {
     } else {
       console.log('\nPaciente no registrado.');
 
+
       const registrar = await pregunta('\n¿Desea registrar a este paciente? (1: Sí, Otro: No): ');
       if (registrar.trim() === '1') {
         return await registrarPacienteFlow(rut);
@@ -68,10 +85,10 @@ async function consultarPaciente() {
       }
     }
   } catch (error) {
-    console.error('Error al consultar paciente:', error.message);
-    return false;
+    throw new Error('Error al consultar paciente:', error.message);
   }
 }
+
 
 function mostrarDatosPaciente(paciente, admision) {
   console.clear();
@@ -80,19 +97,31 @@ function mostrarDatosPaciente(paciente, admision) {
     console.log(` ${key.replace('_', ' ')}:`, value);
   });
 
+
   if (admision) {
     console.log('\nÚltima admisión:\n');
-    console.log(' Motivo:', admision.motivo);
-    console.log(' Estado:', estadoAdmisiones[admision.estado]);
-    console.log(' Fecha:', admision.fecha_llegada);
-    console.log(' Hora:', admision.hora_llegada);
+    console.log(' Motivo: ', admision.motivo);
+    console.log(' Estado: ', estadoAdmisiones[admision.estado]);
+    console.log(' Fecha: ', admision.fecha_llegada);
+    console.log(' Hora: ', admision.hora_llegada);
   } else {
     console.log('\nEl paciente no tiene admisiones previas.');
   }
 }
 
+
 async function admitirPaciente(user, paciente) {
   const motivo = await obtenerDatoConConfirmacion('\n+ Ingrese el Motivo de visita del paciente: ');
+
+
+  if (!motivo) {
+    console.clear();
+    console.log('El motivo de la visita no puede estar vacío.');
+    return;
+  }
+
+
+
 
   try {
     const respuesta = await sendMessage(servicioAdmision, 'admision', {
@@ -101,15 +130,14 @@ async function admitirPaciente(user, paciente) {
       motivo,
     });
 
+
     if (respuesta) {
       const admision = respuesta;
       console.log('\nPaciente admitido con éxito:\n');
-      console.log(' id_admision:', admision.id);
-      console.log(' id_paciente:', admision.id_paciente);
-      console.log(' Motivo:', admision.motivo);
-      console.log(' Estado:', estadoAdmisiones[admision.estado]);
-      console.log(' Fecha:', admision.fecha_llegada);
-      console.log(' Hora:', admision.hora_llegada);
+      Object.entries(admision).forEach(([key, value]) => {
+        console.log(` ${key}: ${value}`);
+      });
+
 
       // Esperar a que el usuario presione Enter antes de continuar
       await pregunta('\nPresione Enter para continuar...');
@@ -122,21 +150,36 @@ async function admitirPaciente(user, paciente) {
   }
 }
 
+
 async function registrarPacienteFlow(rut) {
-  const datosPaciente = {
-    rut,
-    nombres: await obtenerDatoConConfirmacion('+ Nombres: '),
-    apellido_paterno: await obtenerDatoConConfirmacion('+ Apellido paterno: '),
-    apellido_materno: await obtenerDatoConConfirmacion('+ Apellido materno: '),
-    fecha_nacimiento: await obtenerDatoConConfirmacion('+ Fecha de nacimiento (YYYY-MM-DD): '),
-    sexo: await obtenerDatoConConfirmacion('+ Sexo (M/F): '),
-    prevision: await obtenerDatoConConfirmacion('+ Previsión: '),
-    telefono: await obtenerDatoConConfirmacion('+ Teléfono: '),
-    correo_electronico: await obtenerDatoConConfirmacion('+ Correo electrónico: '),
-    direccion: await obtenerDatoConConfirmacion('+ Dirección: '),
-    nacionalidad: await obtenerDatoConConfirmacion('+ Nacionalidad: '),
-    pertenencia_cesfam: (await obtenerDatoConConfirmacion('+ ¿Pertenece al CESFAM? (S/N): ')).toLowerCase() === 's',
-  };
+  const campos = [
+    { label: '+ Nombres: ', key: 'nombres' },
+    { label: '+ Apellido paterno: ', key: 'apellido_paterno' },
+    { label: '+ Apellido materno: ', key: 'apellido_materno' },
+    { label: '+ Fecha de nacimiento (YYYY-MM-DD): ', key: 'fecha_nacimiento', regex: /^\d{4}-\d{2}-\d{2}$/ },
+    { label: '+ Sexo (M/F): ', key: 'sexo', regex: /^[MF]$/i },
+    { label: '+ Previsión: ', key: 'prevision' },
+    { label: '+ Teléfono: ', key: 'telefono', regex: /^\d+$/ },
+    { label: '+ Correo electrónico: ', key: 'correo_electronico', regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    { label: '+ Dirección: ', key: 'direccion' },
+    { label: '+ Nacionalidad: ', key: 'nacionalidad' },
+    { label: '+ ¿Pertenece al CESFAM? (S/N): ', key: 'pertenencia_cesfam', regex: /^[SN]$/i },
+  ];
+
+
+  const datosPaciente = { rut };
+
+
+  for (const campo of campos) {
+    const valor = await obtenerDatoConConfirmacion(campo.label);
+    if (campo.regex && !campo.regex.test(valor)) {
+      console.clear();
+      console.log(`El valor ingresado para "${campo.label}" no es válido. Intente nuevamente.`);
+      return false;
+    }
+    datosPaciente[campo.key] = campo.key === 'pertenencia_cesfam' ? valor.toLowerCase() === 's' : valor;
+  }
+
 
   try {
     const respuesta = await sendMessage(servicioAdmision, 'registrar', { paciente: datosPaciente });
@@ -152,7 +195,7 @@ async function registrarPacienteFlow(rut) {
         return false;
       }
     } else {
-      console.log('Error al registrar el paciente.');
+      console.log('No se pudo registrar el paciente.');
       return false;
     }
   } catch (error) {
@@ -160,6 +203,23 @@ async function registrarPacienteFlow(rut) {
     return false;
   }
 }
+
+
+async function logout(user) {
+  try {
+    const respuesta = await sendMessage(SERVICIO, 'logout', { usuario: user });
+
+
+    if (respuesta.message) {
+      console.log('\nSesión cerrada correctamente. Gracias por usar nuestro sistema.');
+    } else {
+      console.error('\nNo se pudo cerrar la sesión. Intente nuevamente.');
+    }
+  } catch (error) {
+    console.error(`Error al cerrar sesión: ${error.message}`);
+  }
+}
+
 
 module.exports = {
   admissionMenu,

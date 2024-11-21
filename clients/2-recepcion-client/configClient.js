@@ -8,13 +8,13 @@ function sendMessage(servicio, accion, contenido) {
     const socket = new net.Socket();
 
     socket.connect(BUS_PORT, BUS_HOST, () => {
-      // console.log(`[Client] Cliente conectado al bus.`);
+      console.log(`[Client] Cliente conectado al bus.`);
       enviarMensaje(socket, servicio, accion, contenido);
     });
 
     socket.on('data', (data) => {
       const mensaje = parseResponse(data.toString());
-      // console.log('[Client] Respuesta del bus:', mensaje);
+      console.log('[Client] Respuesta del bus:', mensaje);
       procesarRespuesta(socket, mensaje, resolve, reject);
     });
 
@@ -36,10 +36,10 @@ function enviarMensaje(socket, servicio, accion, contenido) {
     const largoMensaje = String(servicio.length + mensaje.length).padStart(5, '0');
     const mensajeCompleto = `${largoMensaje}${servicio}${mensaje}`;
 
-    // console.log('[Client] Enviando al bus:', mensajeCompleto);
+    console.log('[Client] Enviando al bus:', mensajeCompleto);
     socket.write(mensajeCompleto);
   } catch (error) {
-    // console.error('[Client] Error al enviar el mensaje:', error.message);
+    console.error('[Client] Error al enviar el mensaje:', error.message);
     socket.destroy();
   }
 }
@@ -49,6 +49,7 @@ function procesarRespuesta(socket, mensaje, resolve, reject) {
     if (mensaje.estado === 'OK') {
       const respuesta = JSON.parse(mensaje.contenido);
       if (respuesta.estado === 1) {
+        console.log(respuesta.contenido);
         resolve(respuesta.contenido);
       } else {
         // Transmitir el error contenido de forma clara

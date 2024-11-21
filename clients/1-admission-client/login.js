@@ -1,6 +1,6 @@
 const { pregunta, cerrarInput } = require('./inputHandler');
 const { sendMessage } = require('./configClient');
-const { admissionMenu } = require('./admission');
+const { admissionMenu } = require('./app');
 
 const SERVICIO = 'login';
 const cargo = 'admision';

@@ -2,13 +2,16 @@ const { pregunta } = require('./inputHandler');
 const { sendMessage } = require('./configClient');
 
 // Servicio correspondiente
-const servicioRecepcion = 'recepcion';
+const servicioRecepcion = 'recep';
 
 // Estados posibles
 const estadoPacientes = {
   0: 'A espera de categorización',
   1: 'Categorizado',
   2: 'Asignado',
+  3: 'A espera de atención',
+  4: 'En atención',
+  5: 'Finalizado',
 };
 
 // Función principal del menú de recepción
@@ -27,6 +30,7 @@ async function recepcionMenu(user) {
         break;
 
       case '9':
+        await logout();
         console.log('Volviendo al menú principal...');
         return;
 
@@ -40,32 +44,40 @@ async function recepcionMenu(user) {
 // Función para mostrar el tablero principal
 async function mostrarTableroPacientes(user) {
   try {
-    console.clear();
+   console.clear();
     console.log('\n--- Tablero de Pacientes ---\n');
 
-    const pacientes = await sendMessage(servicioRecepcion, 'listarPacientes', { id_usuario: user.id });
+    // Obtener los datos del tablero
+    const respuesta = await sendMessage(servicioRecepcion, 'actualizar', { id_usuario: user.id });
 
-    if (pacientes && pacientes.length > 0) {
-      console.log('| ID   | Nombre Completo         | Motivo              | Estado                     | Prioridad | Signos Vitales | Fecha Llegada | Hora Llegada |');
-      console.log('|------|--------------------------|---------------------|----------------------------|-----------|----------------|---------------|--------------|');
+    if (respuesta === 'No hay pacientes') {
+      console.log('No hay pacientes en espera.');
+      await pregunta('\nPresione Enter para continuar...');
+    } else if (Array.isArray(respuesta)) {
+      const pacientes = respuesta;
 
+      // Encabezados del tablero
+      console.log('| ID Paciente       | nombres           | estado    |');
+      console.log('|-------------------|-------------------|----------------------|');
+
+      // Mostrar los datos
       pacientes.forEach((paciente) => {
-        console.log(
-          `| ${paciente.id_admision.toString().padEnd(5)} | ${`${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}`.padEnd(25)} | ${paciente.motivo.padEnd(19)} | ${estadoPacientes[paciente.estado].padEnd(26)} | ${paciente.prioridad || 'N/A'}       | ${paciente.signos_vitales ? 'Sí' : 'No'}           | ${paciente.fecha_llegada.padEnd(13)} | ${paciente.hora_llegada.padEnd(12)} |`
-        );
+        console.log(`| ${paciente.id.toString().padEnd(17)} | ${paciente.nombres.padEnd(17)} | ${estadoPacientes[paciente.estado].toString().padEnd(20)} |`);
       });
 
-      console.log('\n1. Ver paciente');
+      console.log('\n1. Ver detalles de paciente');
       console.log('2. Actualizar tablero');
       console.log('9. Volver al menú principal');
 
+      // Capturar la opción del usuario
       const opcion = await pregunta('\nSeleccione una opción: ');
 
       switch (opcion.trim()) {
-        case '1':
+        case '1': {
           const idPaciente = await pregunta('Ingrese el ID del paciente que desea ver: ');
           await consultarPaciente(user, parseInt(idPaciente.trim()));
           break;
+        }
         case '2':
           console.clear();
           await mostrarTableroPacientes(user);
@@ -74,15 +86,17 @@ async function mostrarTableroPacientes(user) {
           return;
         default:
           console.log('Opción no válida.');
+          break;
       }
     } else {
-      console.log('No hay pacientes en espera.');
+      console.error('Error al obtener el tablero de pacientes:', respuesta);
       await pregunta('\nPresione Enter para continuar...');
     }
   } catch (error) {
     console.error('Error al mostrar el tablero de pacientes:', error.message);
   }
 }
+
 
 // Función para consultar los detalles de un paciente
 async function consultarPaciente(user, paciente_id) {
@@ -188,6 +202,10 @@ async function registrarObservaciones(user, paciente_id) {
   }
 
   await pregunta('\nPresione Enter para continuar...');
+}
+
+async function logout() {
+  await sendMessage(servicioRecepcion, 'logout', {bum: 'bum'});
 }
 
 module.exports = {

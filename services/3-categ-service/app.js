@@ -5,9 +5,9 @@ async function procesarMensaje(data) {
   try {
     switch (accion) {
       case 'signos vitales':
-        return await recepcionarPaciente(contenido);
+        return await signosVitales(contenido);
       case 'categorizar':
-        return await actualizarTablero(contenido);
+        return await categorizarPaciente(contenido);
       default:
         throw new Error('Acción no reconocida.');
     }
@@ -16,14 +16,17 @@ async function procesarMensaje(data) {
   }
 }
 
-async function recepcionarPaciente(contenido) {
-  const admision = contenido.admision;
-  console.log(admision);
+signosVitales (categorizacion, signos) {
+  const {signosVitales} = contenido.signosVitales;
+  // Implementación del código para registrar signos vitales
+  return signosVitales();
 }
 
-async function actualizarTablero(contenido) {
-  const tablero = contenido.tablero;
-  await sendMessage(servicioTablero, 'actualizar', { tablero });
+categorizarPaciente (categorizacion) {
+  const {categorizacion} = contenido.paciente;
+  u
+  // Implementación del código para categorizar paciente
+  return paciente.categorizacion;
 }
 
 module.exports = {
