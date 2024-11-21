@@ -3,41 +3,20 @@ require('dotenv').config();
 
 const { BUS_HOST, BUS_PORT } = process.env;
 
-// Enviar al bus con un servicio específico
-function enviarAlBus(servicio, payload) {
+function sendMessage(servicio, accion, contenido) {
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
 
     socket.connect(BUS_PORT, BUS_HOST, () => {
-      console.log('\n-----------------------------\nConectado al bus.');
-
-      // Serializar el payload solo si es un objeto o array, pero no si es un string
-      const mensaje = typeof payload === 'string' ? payload : JSON.stringify(payload);
-
-      const largoMensaje = String(servicio.length + mensaje.length).padStart(5, '0');
-      const mensajeCompleto = `${largoMensaje}${servicio}${mensaje}`;
-
-      console.log('Enviando al bus:', mensajeCompleto);
-
-      socket.write(mensajeCompleto);
+      console.log('- - - - -');
+      console.log(`[Client] Cliente conectado al bus.`);
+      enviarMensaje(socket, servicio, accion, contenido);
     });
 
     socket.on('data', (data) => {
-      try {
-        const parsedResponse = parseResponse(data.toString());
-        console.log('Respuesta del bus:', parsedResponse);
-
-        if (parsedResponse.estado === 'OK') {
-          resolve(parsedResponse.contenido); // Solo el contenido si la respuesta fue exitosa
-        } else {
-          reject(new Error('Fallo del servidor o servicio no disponible.'));
-        }
-      } catch (error) {
-        reject(new Error('Error al parsear la respuesta del servidor: ' + error.message));
-      } finally {
-        socket.destroy(); // Cerrar el socket después de recibir la respuesta
-        console.log('Desconectado del bus.\n-----------------------------\n');
-      }
+      const mensaje = parseResponse(data.toString());
+      console.log('[Client] Respuesta del bus:', mensaje);
+      procesarRespuesta(socket, mensaje, resolve, reject);
     });
 
     socket.on('error', (err) => {
@@ -46,24 +25,54 @@ function enviarAlBus(servicio, payload) {
     });
 
     socket.on('close', () => {
-      //console.log('Desconectado del bus.\n');
+      console.log('[Client] Desconectado del bus.\n');
+      console.log('- - - - -');
     });
   });
 }
 
+function enviarMensaje(socket, servicio, accion, contenido) {
+  try {
+    const mensajeObj = { accion, contenido };
+    const mensaje = JSON.stringify(mensajeObj);
+    const largoMensaje = String(servicio.length + mensaje.length).padStart(5, '0');
+    const mensajeCompleto = `${largoMensaje}${servicio}${mensaje}`;
+    
+    console.log('[Client] Enviando al bus:', mensajeCompleto);
+    socket.write(mensajeCompleto);
+  } catch (error) {
+    console.error('[Client] Error al enviar el mensaje:', error.message);
+    socket.destroy();
+  }
+}
 
-// Parsear respuesta del bus
+function procesarRespuesta(socket, mensaje, resolve, reject) {
+  try {
+    if (mensaje.estado === 'OK') {
+      const respuesta = JSON.parse(mensaje.contenido);
+      if (respuesta.estado === 1) {
+        resolve(respuesta.contenido);
+      } else {
+        // Transmitir el error contenido de forma clara
+        reject(new Error(respuesta.contenido || 'Error desconocido.'));
+      }
+    } else {
+      reject(new Error('Fallo del servidor o servicio no disponible.'));
+    }
+  } catch (error) {
+    reject(new Error('Error al procesar la respuesta del servidor: ' + error.message));
+  } finally {
+    socket.destroy();
+  }
+}
+
+
 function parseResponse(rawMessage) {
   const largo = parseInt(rawMessage.substring(0, 5), 10);
   const servicio = rawMessage.substring(5, 10).trim();
   const contenido = rawMessage.substring(10);
-
-  if (contenido.length < 2) {
-    throw new Error('El contenido del mensaje es demasiado corto para incluir un estado válido.');
-  }
-
-  const estado = contenido.substring(0, 2); // Estado (OK o NK)
-  const mensajeContenido = contenido.substring(2); // Resto del contenido del mensaje
+  const estado = contenido.substring(0, 2);
+  const mensajeContenido = contenido.substring(2);
 
   return {
     largo,
@@ -74,5 +83,5 @@ function parseResponse(rawMessage) {
 }
 
 module.exports = {
-  enviarAlBus,
+  sendMessage,
 };
