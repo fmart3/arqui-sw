@@ -101,7 +101,7 @@ async function registrarPaciente(data) {
 }
 
 async function recepcionarAdmision(admision) {
-  await sendMessage(servicioRecep, 'recepcion', admision);
+  await sendMessage(servicioRecep, 'recepcion', {admision});
   return;
 } 
 
