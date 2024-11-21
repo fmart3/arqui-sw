@@ -1,83 +1,92 @@
 const net = require('net');
 require('dotenv').config();
 
-function iniciarServicio(serviceName, handleRequest) {
-  const BUS_HOST = process.env.BUS_HOST;
-  const BUS_PORT = process.env.BUS_PORT;
+const BUS_HOST = process.env.BUS_HOST;
+const BUS_PORT = process.env.BUS_PORT;
 
-  const servicioSocket = new net.Socket();
+function iniciarServicio(servicio, handleRequest) {
+    const socket = new net.Socket();
 
-  // Mensaje de identificación (registro)
-  const contenidoSinit = 'sinit';
-  const largoSinit = String(serviceName.length + contenidoSinit.length).padStart(5, '0');
-  const mensajeSinit = `${largoSinit}${contenidoSinit}${serviceName}`;
+    socket.connect(BUS_PORT, BUS_HOST, () => {
+        console.log(`\n[Service] Servicio "${servicio}" conectado al bus.`);
+        conectarAlBus(socket, servicio);
+    });
 
-  servicioSocket.connect(BUS_PORT, BUS_HOST, () => {
-    console.log(`[Service] Servicio "${serviceName}" conectado al bus.`);
-    console.log(`[Service] Enviando mensaje de registro: ${mensajeSinit}`);
-    servicioSocket.write(mensajeSinit);
-  });
+    socket.on('data', async (data) => {
+        console.log('- - - - -');
+        console.log(`[Service] Mensaje recibido del bus: ${data.toString()}`);
+        await procesarMensaje(socket, servicio, data, handleRequest);
+    });
 
-  servicioSocket.on('data', async (data) => {
-    const mensaje = data.toString();
-    const largo = parseInt(mensaje.substring(0, 5));
-    const cliente = mensaje.substring(5, 10).trim();
-    const contenido = mensaje.substring(10);
+    socket.on('close', () => {
+        console.log(`[Service] Conexión cerrada con el bus para "${servicio}".`);
+        process.exit(1);
+    });
 
-    console.log(`\n-----------------------------\n[Service] Mensaje recibido del bus: ${mensaje}`);
+    socket.on('error', (err) => {
+        console.error(`[Service] Error en el servicio "${servicio}":`, err.message);
+        process.exit(1);
+    });
+}
 
-    if (cliente === 'sinit') {
-      if (contenido.startsWith('OK')) {
-        console.log(`[Service] Servicio "${serviceName}" registrado correctamente.`);
-      } else {
-        console.error(`[Service] Error al registrar el servicio "${serviceName}".`);
-        servicioSocket.destroy();
+function conectarAlBus(socket, servicio) {
+    const mensaje = construirMensaje('sinit', servicio);
+    socket.write(mensaje);
+    console.log(`[Service] Enviando mensaje de registro: ${mensaje}`);
+}
+
+async function procesarMensaje(socket, servicio, data, handleRequest) {
+    const mensaje = parsearMensajeBus(data);
+    if (mensaje.servicio === 'sinit') {
+        manejarRegistro(socket, mensaje);
         return;
-      }
-      return;
     }
 
     try {
-      // Delegar la lógica de negocios al manejador específico
-      const resultado = await handleRequest(contenido);
-      enviarRespuesta(servicioSocket, cliente, resultado);
-    } catch (err) {
-      console.error(`[Service] Error procesando solicitud:`, err.message);
-      enviarRespuesta(servicioSocket, cliente, `0Error: ${err.message}`);
+        const request = JSON.parse(mensaje.contenido);
+        const contenido = await handleRequest(request);
+        enviarRespuesta(socket, servicio, {
+            estado: 1,
+            contenido,
+        });
+    } catch (error) {
+        enviarRespuesta(socket, servicio, {
+            estado: 0,
+            contenido: error.message,
+        });
     }
-  });
-
-  servicioSocket.on('close', () => {
-    console.log(`[Service] Conexión cerrada con el bus para "${serviceName}".`);
-    process.exit(1);
-  });
-
-  servicioSocket.on('error', (err) => {
-    console.error(`[Service] Error en el servicio "${serviceName}":`, err.message);
-    process.exit(1);
-  });
 }
 
-function enviarRespuesta(socket, cliente, contenido) {
-  let mensaje;
+function manejarRegistro(socket, mensaje) {
+    const estado = mensaje.contenido.substring(0, 2);
+    const contenido = mensaje.contenido.substring(2);
+    if (estado === 'OK') {
+        console.log(`[Service] Servicio "${contenido}" registrado correctamente.`);
+    } else {
+        console.error(`[Service] Error al registrar servicio "${contenido}".`);
+        socket.destroy();
+    }
+}
 
-  if (typeof contenido === 'object') {
-    // Asume que es un resultado exitoso
-    mensaje = `1${JSON.stringify(contenido)}`;
-  } else if (contenido.startsWith('0')) {
-    // Error o resultado vacío
-    mensaje = contenido;
-  } else {
-    mensaje = `0${contenido}`;
-  }
+function enviarRespuesta(socket, servicio, contenido) {
+    const mensaje = construirMensaje(servicio, JSON.stringify(contenido));
+    socket.write(mensaje);
+    console.log(`\n[Service] Mensaje enviado al bus: ${mensaje}`);
+    console.log('- - - - -');
+}
 
-  const largoRespuesta = String(cliente.length + mensaje.length).padStart(5, '0');
-  const mensajeRespuesta = `${largoRespuesta}${cliente}${mensaje}`;
-  socket.write(mensajeRespuesta);
+function construirMensaje(servicio, contenido) {
+    const largo = String(servicio.length + contenido.length).padStart(5, '0');
+    return `${largo}${servicio}${contenido}`;
+}
 
-  console.log(`[Service] Enviando respuesta al bus: ${mensajeRespuesta}\n-----------------------------\n`);
+function parsearMensajeBus(data) {
+    const mensaje = data.toString();
+    const servicio = mensaje.substring(5, 10).trim();
+    const contenido = mensaje.substring(10);
+    return { servicio, contenido };
 }
 
 module.exports = {
-  iniciarServicio,
+    iniciarServicio,
 };
