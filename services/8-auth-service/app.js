@@ -41,9 +41,9 @@ async function registrarUsuario(usuario) {
   }
 }
 
-async function autenticarUsuario({ rut, password }) {
+async function autenticarUsuario({ rut, password, cargo }) {
   try {
-    const query = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${rut}' AND password = '${password}'`;
+    const query = `SELECT id, rut, nombres, apellido_paterno, apellido_materno, cargo FROM Usuario WHERE rut = '${rut}' AND password = '${password}' and cargo = '${cargo}'`;
     const respuestaDB = await sendMessage('datab', 'select', { query });
 
     if (!respuestaDB || respuestaDB.length === 0) {

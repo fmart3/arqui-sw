@@ -1,9 +1,9 @@
 const { pregunta, cerrarInput } = require('./inputHandler');
 const { sendMessage } = require('./configClient');
-const { admissionMenu } = require('./admission');
+const { recepcionMenu } = require('./app');
 
 const SERVICIO = 'login';
-const cargo = 'admision';
+const cargo = 'tens';
 
 async function iniciarMenuSesion() {
   while (true) {
@@ -17,7 +17,7 @@ async function iniciarMenuSesion() {
         const login = await iniciarSesion();
         if (login) {
           console.log(`\n¡Bienvenido(a), ${login.nombres} ${login.apellido_paterno}!`);
-          await admissionMenu(login);
+          await recepcionMenu(login);
           console.log('\nSesión cerrada. Volviendo al inicio de sesión...');
         }
         break;
