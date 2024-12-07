@@ -81,7 +81,7 @@ async function actualizarTablero() {
       INNER JOIN admision a ON p.id = a.id_paciente
       INNER JOIN categorizacion c ON a.id = c.id_admision
       WHERE c.estado < 3 AND a.estado < 4
-      ORDER BY c.prioridad ASC, a.fecha_llegada DESC, a.hora_llegada DESC;
+      ORDER BY a.fecha_llegada DESC, a.hora_llegada DESC;
     `;
 
     const respuesta = await client(servicioDataB, { accion: 'select', contenido: query });

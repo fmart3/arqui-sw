@@ -110,6 +110,11 @@ async function mostrarAdmisiones() {
   }
 }
 
+async function recepcionarAdmision(admision) {
+  await client(servicioRecep, { accion: 'recepcion', contenido: admision });
+  return;
+}
+
 async function borrarAdmision(admision_id) {
 
 }
