@@ -1,15 +1,15 @@
-const { signosVitales, categorizarPaciente, registrarObservaciones } = require('./service');
+const { crearAsignacion, asignar, desasignar } = require('./service');
 
 async function procesarMensaje(data) {
   const { accion, contenido } = data;
   try {
     switch (accion) {
-      case 'signosVitales':
-        return await signosVitales(contenido);
-      case 'categorizar':
-        return await categorizarPaciente(contenido);
-      case 'observaciones':
-        return await registrarObservaciones(contenido);
+      case 'crearAsignacion':
+        return await crearAsignacion(contenido);
+      case 'asignar':
+        return await asignar(contenido);
+      case 'desasignar':
+        return await desasignar();
       default:
         return { status: 0, contenido: 'Acción no reconocida.' };
     }

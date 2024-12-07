@@ -1,3 +1,3 @@
 const { service } = require('./configService');
 
-service('categ');
+service('auth0');
