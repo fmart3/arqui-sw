@@ -1,211 +1,164 @@
 const { pregunta } = require('./inputHandler');
-const { sendMessage } = require('./configClient');
+const { client } = require('./configClient');
+const { tomarSignosVitales, categorizarPaciente, observaciones } = require('./categorizacion');
 
 // Servicio correspondiente
 const servicioRecepcion = 'recep';
-
-// Estados posibles
-const estadoPacientes = {
-  0: 'A espera de categorización',
-  1: 'Categorizado',
-  2: 'Asignado',
-  3: 'A espera de atención',
-  4: 'En atención',
-  5: 'Finalizado',
-};
 
 // Función principal del menú de recepción
 async function recepcionMenu(user) {
   while (true) {
     console.clear();
-    console.log('\n--- Recepción de Pacientes ---\n');
-    console.log('1. Mostrar tablero de pacientes');
+    await mostrarTablero(user);
+    console.log('\n\n\n1. Ver detalles de categorización');
+    console.log('2. Actualizar tablero');
     console.log('9. Volver al menú principal');
 
+    // Capturar la opción del usuario
     const opcion = await pregunta('\nSeleccione una opción: ');
 
     switch (opcion.trim()) {
-      case '1':
-        await mostrarTableroPacientes(user);
+      case '1': {
+        const idCategorizacion = await pregunta('Ingrese el ID de categorización que desea ver: ');
+        await mostrarDetallesCategorizacion(user, parseInt(idCategorizacion.trim()));
         break;
-
-      case '9':
-        await logout();
-        console.log('Volviendo al menú principal...');
-        return;
-
-      default:
-        console.clear();
-        console.log('Opción no válida. Intente nuevamente.');
-    }
-  }
-}
-
-// Función para mostrar el tablero principal
-async function mostrarTableroPacientes(user) {
-  try {
-   console.clear();
-    console.log('\n--- Tablero de Pacientes ---\n');
-
-    // Obtener los datos del tablero
-    const respuesta = await sendMessage(servicioRecepcion, 'actualizar', { id_usuario: user.id });
-
-    if (respuesta === 'No hay pacientes') {
-      console.log('No hay pacientes en espera.');
-      await pregunta('\nPresione Enter para continuar...');
-    } else if (Array.isArray(respuesta)) {
-      const pacientes = respuesta;
-
-      // Encabezados del tablero
-      console.log('| ID Paciente       | nombres           | estado    |');
-      console.log('|-------------------|-------------------|----------------------|');
-
-      // Mostrar los datos
-      pacientes.forEach((paciente) => {
-        console.log(`| ${paciente.id.toString().padEnd(17)} | ${paciente.nombres.padEnd(17)} | ${estadoPacientes[paciente.estado].toString().padEnd(20)} |`);
-      });
-
-      console.log('\n1. Ver detalles de paciente');
-      console.log('2. Actualizar tablero');
-      console.log('9. Volver al menú principal');
-
-      // Capturar la opción del usuario
-      const opcion = await pregunta('\nSeleccione una opción: ');
-
-      switch (opcion.trim()) {
-        case '1': {
-          const idPaciente = await pregunta('Ingrese el ID del paciente que desea ver: ');
-          await consultarPaciente(user, parseInt(idPaciente.trim()));
-          break;
-        }
-        case '2':
-          console.clear();
-          await mostrarTableroPacientes(user);
-          break;
-        case '9':
-          return;
-        default:
-          console.log('Opción no válida.');
-          break;
       }
-    } else {
-      console.error('Error al obtener el tablero de pacientes:', respuesta);
-      await pregunta('\nPresione Enter para continuar...');
-    }
-  } catch (error) {
-    console.error('Error al mostrar el tablero de pacientes:', error.message);
-  }
-}
-
-
-// Función para consultar los detalles de un paciente
-async function consultarPaciente(user, paciente_id) {
-  try {
-    console.clear();
-    const paciente = await sendMessage(servicioRecepcion, 'verPaciente', { id_admision: paciente_id });
-
-    if (!paciente) {
-      console.log('Paciente no encontrado.');
-      await pregunta('\nPresione Enter para continuar...');
-      return;
-    }
-
-    console.log('\n--- Información del Paciente ---\n');
-    console.log(`Nombre: ${paciente.nombre} ${paciente.apellido1} ${paciente.apellido2}`);
-    console.log(`Motivo: ${paciente.motivo}`);
-    console.log(`Estado: ${estadoPacientes[paciente.estado]}`);
-    console.log(`Prioridad: ${paciente.prioridad || 'N/A'}`);
-    console.log(`Signos vitales registrados: ${paciente.signos_vitales ? 'Sí' : 'No'}`);
-    console.log(`Fecha de llegada: ${paciente.fecha_llegada}`);
-    console.log(`Hora de llegada: ${paciente.hora_llegada}`);
-    console.log(`Observaciones: ${paciente.observaciones || 'Sin observaciones'}`);
-
-    console.log('\n1. Ingresar signos vitales');
-    console.log('2. Registrar observaciones');
-    console.log('9. Volver al tablero');
-
-    const opcion = await pregunta('\nSeleccione una opción: ');
-
-    switch (opcion.trim()) {
-      case '1':
-        await ingresarSignosVitales(user, paciente_id);
-        break;
       case '2':
-        await registrarObservaciones(user, paciente_id);
+        await mostrarTablero(user);
         break;
       case '9':
         return;
       default:
         console.log('Opción no válida.');
+        await pregunta('\nPresione Enter para continuar...');
     }
-  } catch (error) {
-    console.error('Error al consultar al paciente:', error.message);
   }
 }
 
-// Función para ingresar signos vitales
-async function ingresarSignosVitales(user, paciente_id) {
+// Función para mostrar el tablero principal
+async function mostrarTablero(user) {
   try {
     console.clear();
-    console.log('\n--- Ingresar Signos Vitales ---\n');
-    const presionArterial = await pregunta('Presión arterial (ej. 120/80): ');
-    const pulso = await pregunta('Pulso: ');
-    const saturacion = await pregunta('Saturación (%): ');
-    const temperatura = await pregunta('Temperatura axilar (°C): ');
-    const frecuenciaResp = await pregunta('Frecuencia respiratoria: ');
-    const alergiasMed = await pregunta('¿Tiene alergias a medicamentos? (Sí/No): ') === 'Sí';
-    const otrasAlergias = await pregunta('¿Tiene otras alergias? (Sí/No): ') === 'Sí';
+    console.log('\n--- Tablero de Pacientes ---\n');
 
-    const resultado = await sendMessage(servicioRecepcion, 'ingresarSignosVitales', {
-      id_admision: paciente_id,
-      id_funcionario: user.id,
-      presion_arterial: presionArterial,
-      pulso: parseInt(pulso),
-      saturacion: parseInt(saturacion),
-      temperatura_axilar: temperatura,
-      frecuencia_respiratoria: parseInt(frecuenciaResp),
-      alergias_medicamentos: alergiasMed,
-      otras_alergias: otrasAlergias,
+    // Obtener los datos del tablero
+    const respuesta = await client(servicioRecepcion, { accion: 'actualizar' });
+
+    if (respuesta.status === 0) {
+      console.error('Error al obtener el tablero de pacientes:', respuesta.contenido || 'Datos no válidos.');
+      await pregunta('\nPresione Enter para continuar...');
+      return;
+    }
+
+    const categorizacion = respuesta.contenido;
+
+    if (!categorizacion || categorizacion.length === 0) {
+      console.log('No hay pacientes en espera.');
+      await pregunta('\nPresione Enter para continuar...');
+      return;
+    }
+
+    // Encabezados del tablero
+    console.log(
+      '| ID Categorización | Rut          | Nombre Completo        | Fecha Llegada | Hora Llegada | Categorización | Estado'
+    );
+    console.log(
+      '|-------------------|--------------|------------------------|---------------|--------------|----------------|--------------------------'
+    );
+
+    // Mostrar los datos
+    categorizacion.forEach((paciente) => {
+      console.log(
+        `| ${paciente.id_categorizacion.toString().padEnd(17)} | ` +
+        `${paciente.rut.padEnd(12)} | ` +
+        `${(paciente.nombres + ' ' + paciente.apellido_paterno).padEnd(22)} | ` +
+        `${paciente.fecha_llegada.padEnd(13)} | ` +
+        `${paciente.hora_llegada.padEnd(12)} | ` +
+        `${(paciente.categorizacion !== null ? paciente.categorizacion : 'X').toString().padEnd(14)} | ` +
+        `${paciente.estado.padEnd(24)}` 
+        //`${(paciente.prioridad !== null ? paciente.prioridad : 'N/A').toString().padEnd(9)} |`
+      );
     });
 
-    if (resultado) {
-      console.log('Signos vitales registrados con éxito.');
-    } else {
-      console.log('Error al registrar signos vitales.');
-    }
+    return;
   } catch (error) {
-    console.error('Error al ingresar signos vitales:', error.message);
+    console.error('Error al mostrar el tablero de pacientes:', error.message);
+    await pregunta('\nPresione Enter para continuar...');
   }
-
-  await pregunta('\nPresione Enter para continuar...');
 }
 
-// Función para registrar observaciones
-async function registrarObservaciones(user, paciente_id) {
+// Función para mostrar detalles de una categorización
+async function mostrarDetallesCategorizacion(user, idCategorizacion) {
   try {
     console.clear();
-    const observaciones = await pregunta('Ingrese las observaciones: ');
+    console.log('\n--- Detalles de paciente ---\n');
 
-    const resultado = await sendMessage(servicioRecepcion, 'registrarObservaciones', {
-      id_admision: paciente_id,
-      id_funcionario: user.id,
-      observaciones,
-    });
+    const respuesta = await client(servicioRecepcion, { accion: 'detalle', contenido: idCategorizacion });
 
-    if (resultado) {
-      console.log('Observaciones registradas con éxito.');
+    if (respuesta.status === 0 || !respuesta.contenido) {
+      console.error('Error al obtener los detalles de la categorización:', respuesta.contenido || 'Datos no válidos.');
+      await pregunta('\nPresione Enter para continuar...');
+      return;
+    }
+
+    const detalles = respuesta.contenido;
+
+    console.log(`ID Categorización: ${detalles.idCategorizacion}`);
+    console.log(`Rut: ${detalles.paciente.rut}`);
+    console.log(`Nombre: ${detalles.paciente.nombre}`);
+    console.log(`Categorización: ${detalles.categorizacion || 'No categorizado'}`);
+    console.log(`Estado: ${detalles.estado}`);
+    console.log(`Motivo: ${detalles.admision.motivo}`);
+    console.log(`Fecha de Llegada: ${detalles.admision.fechaLlegada}`);
+    console.log(`Hora de Llegada: ${detalles.admision.horaLlegada}`);
+    console.log(`Observaciones: ${detalles.admision.observaciones || 'Sin observaciones'}`);
+    console.log('\nSignos vitales:');
+    if (detalles.signosVitales == null) {
+      console.log(' No se han tomado los signos vitales.');
     } else {
-      console.log('Error al registrar observaciones.');
+      Object.entries(detalles.signosVitales).forEach(([key, value]) => {
+        // Filtrar para no mostrar 'id' ni 'id_categorizacion'
+        if (key !== 'id' && key !== 'id_categorizacion') {
+          // Reemplazar guiones bajos por espacios para mejor legibilidad
+          const formattedKey = key.replace(/_/g, ' ');
+          console.log(`   ${formattedKey}:`, value);
+        }
+      });
+    }
+    console.log('\n1. Tomar signos vitales');
+    console.log('2. Registrar observaciones');
+    console.log('3. Categorizar');
+    console.log('9. Mostrar tablero');
+
+    const opcion = await pregunta('\nSeleccione una opción: ');
+
+    switch (opcion.trim()) {
+      case '1':
+        if (detalles.signosVitales == null) {
+          await tomarSignosVitales(user, idCategorizacion, mostrarDetallesCategorizacion);
+        } else {
+          console.log('\nLos signos vitales ya han sido tomados.');
+          await pregunta('\nPresione Enter para continuar...');
+          await mostrarDetallesCategorizacion(user, idCategorizacion);
+        }
+        break;
+      case '3':
+        await categorizarPaciente(user, idCategorizacion, mostrarDetallesCategorizacion);
+        break;
+      case '2':
+        await observaciones(user, idCategorizacion, mostrarDetallesCategorizacion);
+        break;
+      case '9':
+        return;
+      default:
+        console.log('Opción no válida.');
+        await pregunta('\nPresione Enter para continuar...');
+        await mostrarDetallesCategorizacion(user, idCategorizacion);
     }
   } catch (error) {
-    console.error('Error al registrar observaciones:', error.message);
+    console.error('Error al mostrar detalles de categorización:', error.message);
+    await pregunta('\nPresione Enter para continuar...');
   }
-
-  await pregunta('\nPresione Enter para continuar...');
-}
-
-async function logout() {
-  await sendMessage(servicioRecepcion, 'logout', {bum: 'bum'});
 }
 
 module.exports = {
