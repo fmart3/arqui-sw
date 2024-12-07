@@ -1,8 +1,8 @@
 const { pregunta, cerrarInput } = require('./inputHandler');
-const { sendMessage } = require('./configClient');
+const { client } = require('./configClient');
 const { admissionMenu } = require('./app');
 
-const SERVICIO = 'login';
+const SERVICIO = 'auth0';
 const cargo = 'admision';
 
 async function iniciarMenuSesion() {
@@ -46,18 +46,18 @@ async function iniciarSesion() {
     const rut = await pregunta('Ingrese su RUT (sin puntos ni guión): ');
     const password = await pregunta('Ingrese su contraseña: ');
 
-    const respuesta = await sendMessage(SERVICIO, 'autenticar', { rut, password, cargo });
+    const respuesta = await client(SERVICIO, {accion: 'autenticar', contenido: {rut, password, cargo }});
 
-    if (respuesta) {
+    if (respuesta.status === 1) {
       console.clear();
       console.log('\nInicio de sesión exitoso.');
-      return respuesta;
+      return respuesta.contenido;
     } else {
-      console.log(`Inicio de sesión fallido. Intente nuevamente.`);
+      console.log(`\nInicio de sesión fallido. Intente nuevamente.`);
       return null;
     }
   } catch (error) {
-    //console.error(`Error al iniciar sesión: ${error.message}`);
+    console.error(`Error al iniciar sesión: ${error.message}`);
     console.clear();
     console.log('\nInicio de sesión fallido. Verifique sus credenciales.');
     return null;
@@ -83,13 +83,13 @@ async function registrarUsuario() {
       return false;
     }
 
-    const respuesta = await sendMessage(SERVICIO, 'registrar', { usuario });
+    const respuesta = await client(SERVICIO, { accion: 'registrar', contenido: usuario });
 
-    if (respuesta) {
+    if (respuesta.status === 1) {
       //console.log('Usuario registrado exitosamente:', respuesta);
       return true;
     } else {
-      console.log(`Error al registrar usuario: ${respuesta.contenido || 'Intente nuevamente más tarde.'}`);
+      console.log(`\nError al registrar usuario: ${respuesta.contenido || 'Intente nuevamente más tarde.'}`);
       return false;
     }
   } catch (error) {

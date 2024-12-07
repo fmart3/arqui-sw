@@ -1,23 +1,22 @@
 const { pregunta, obtenerDatoConConfirmacion } = require('./inputHandler');
-const { sendMessage } = require('./configClient');
-
+const { client } = require('./configClient');
 
 const servicioAdmision = 'admis'; // Servicio específico para admisión
-const SERVICIO = 'login';
+const SERVICIO = 'auth0';
 const estadoAdmisiones = {
   0: 'No admitido',
   1: 'Admitido',
   2: 'En espera de categorización',
-  3: 'Alta',
+  3: 'En espera de atención',
+  4: 'Alta',
 };
-
 
 async function admissionMenu(user) {
   while (true) {
     console.log('\n--- Admisión de Pacientes ---\n');
     console.log('1. Consultar paciente');
+    console.log('2. Ver últimas admisiones');
     console.log('9. Volver al menú principal');
-
 
     const opcion = await pregunta('\nSeleccione una opción: ');
     try {
@@ -28,12 +27,17 @@ async function admissionMenu(user) {
             await admitirPaciente(user, paciente);
           }
           break;
- 
+
+        case '2':
+          await admisiones();
+          console.clear();
+          break;
+
         case '9':
           await logout(user);
           console.log('Volviendo al menú principal...');
           return; // Termina el menú de admisión y regresa al flujo principal
- 
+
         default:
           console.clear();
           console.log('Opción no válida. Intente nuevamente.');
@@ -41,27 +45,55 @@ async function admissionMenu(user) {
     } catch (error) {
       throw new Error('Error en el menú de admisión:', error.message);
     }
-   
+
+  }
+}
+
+async function admisiones() {
+  try {
+    const respuesta = await client(servicioAdmision, { accion: 'mostrar_admisiones' });
+
+    if (respuesta.status === 1 && respuesta.contenido != null) {
+      console.clear();
+      console.log('\n--- Últimas Admisiones ---\n');
+
+      respuesta.contenido.forEach((admision, index) => {
+        console.log(`Admisión #${index + 1}`);
+        console.log(` RUT: ${admision.rut}`);
+        console.log(` Nombre: ${admision.nombre_completo}`);
+        console.log(` ID de Admisión: ${admision.id_admision}`);
+        console.log(` Motivo: ${admision.motivo}`);
+        console.log(` Estado: ${estadoAdmisiones[admision.estado]}`);
+        console.log(` Fecha de llegada: ${admision.fecha_llegada}`);
+        console.log(` Hora de llegada: ${admision.hora_llegada}`);
+        console.log('----------------------------------');
+      });
+
+      await pregunta('\nPresione Enter para volver al menú...');
+    } else {
+      console.log('\nNo se encontraron admisiones recientes.');
+      await pregunta('\nPresione Enter para volver al menú...');
+    }
+  } catch (error) {
+    console.error('Error al obtener las últimas admisiones:', error.message);
   }
 }
 
 
 async function consultarPaciente() {
   const rut = await pregunta('Ingrese el RUT del paciente (Sin puntos ni guión): ');
- 
+
   if (!/^\d{7,8}[0-9kK]$/.test(rut)) {
     console.log('Formato de RUT inválido. Intente nuevamente.');
     return false;
   }
 
-
   try {
-    const respuesta = await sendMessage(servicioAdmision, 'consultar', { rut });
-   
-    if (respuesta) {
-      const { paciente, admision } = respuesta;
-      mostrarDatosPaciente(paciente, admision);
+    const respuesta = await client(servicioAdmision, { accion: 'consultar', contenido: { rut } });
 
+    if (respuesta.status === 1) {
+      const { paciente, admision } = respuesta.contenido;
+      mostrarDatosPaciente(paciente, admision);
 
       const admitir = await pregunta('\n¿Desea admitir a este paciente? (1: Sí, Otro: No): ');
       if (admitir.trim() === '1') {
@@ -73,7 +105,6 @@ async function consultarPaciente() {
       }
     } else {
       console.log('\nPaciente no registrado.');
-
 
       const registrar = await pregunta('\n¿Desea registrar a este paciente? (1: Sí, Otro: No): ');
       if (registrar.trim() === '1') {
@@ -89,16 +120,17 @@ async function consultarPaciente() {
   }
 }
 
-
 function mostrarDatosPaciente(paciente, admision) {
   console.clear();
   console.log('\nPaciente encontrado:\n');
   Object.entries(paciente).forEach(([key, value]) => {
-    console.log(` ${key.replace('_', ' ')}:`, value);
+    if (key != 'id') {
+      console.log(` ${key.replace('_', ' ')}:`, value);
+    }
   });
 
 
-  if (admision) {
+  if (admision.id) {
     console.log('\nÚltima admisión:\n');
     console.log(' Motivo: ', admision.motivo);
     console.log(' Estado: ', estadoAdmisiones[admision.estado]);
@@ -109,10 +141,8 @@ function mostrarDatosPaciente(paciente, admision) {
   }
 }
 
-
 async function admitirPaciente(user, paciente) {
   const motivo = await obtenerDatoConConfirmacion('\n+ Ingrese el Motivo de visita del paciente: ');
-
 
   if (!motivo) {
     console.clear();
@@ -120,24 +150,21 @@ async function admitirPaciente(user, paciente) {
     return;
   }
 
-
-
-
   try {
-    const respuesta = await sendMessage(servicioAdmision, 'admision', {
-      user_id: user.id,
-      paciente,
-      motivo,
+    const respuesta = await client(servicioAdmision, {
+      accion: 'admision', contenido: {
+        user_id: user.id,
+        paciente,
+        motivo,
+      }
     });
 
-
-    if (respuesta) {
-      const admision = respuesta;
+    if (respuesta.status === 1) {
+      const admision = respuesta.contenido;
       console.log('\nPaciente admitido con éxito:\n');
       Object.entries(admision).forEach(([key, value]) => {
         console.log(` ${key}: ${value}`);
       });
-
 
       // Esperar a que el usuario presione Enter antes de continuar
       await pregunta('\nPresione Enter para continuar...');
@@ -149,7 +176,6 @@ async function admitirPaciente(user, paciente) {
     console.error('Error al admitir paciente:', error.message);
   }
 }
-
 
 async function registrarPacienteFlow(rut) {
   const campos = [
@@ -166,9 +192,7 @@ async function registrarPacienteFlow(rut) {
     { label: '+ ¿Pertenece al CESFAM? (S/N): ', key: 'pertenencia_cesfam', regex: /^[SN]$/i },
   ];
 
-
   const datosPaciente = { rut };
-
 
   for (const campo of campos) {
     const valor = await obtenerDatoConConfirmacion(campo.label);
@@ -180,15 +204,14 @@ async function registrarPacienteFlow(rut) {
     datosPaciente[campo.key] = campo.key === 'pertenencia_cesfam' ? valor.toLowerCase() === 's' : valor;
   }
 
-
   try {
-    const respuesta = await sendMessage(servicioAdmision, 'registrar', { paciente: datosPaciente });
+    const respuesta = await client(servicioAdmision, { accion: 'registrar', contenido: { paciente: datosPaciente } });
     console.clear();
-    console.log('paciente registrado:', respuesta);
-    if (respuesta) {
+    console.log('paciente registrado:', respuesta.contenido);
+    if (respuesta.status === 1) {
       const admitir = await pregunta('\n¿Desea admitir a este paciente? (1: Sí, Otro: No): ');
       if (admitir.trim() === '1') {
-        return respuesta;
+        return respuesta.contenido;
       } else {
         console.clear();
         console.log('Paciente registrado pero no admitido.');
@@ -204,13 +227,11 @@ async function registrarPacienteFlow(rut) {
   }
 }
 
-
 async function logout(user) {
   try {
-    const respuesta = await sendMessage(SERVICIO, 'logout', { usuario: user });
+    const respuesta = await client(SERVICIO, { accion: 'logout', contenido: user });
 
-
-    if (respuesta.message) {
+    if (respuesta.status === 1) {
       console.log('\nSesión cerrada correctamente. Gracias por usar nuestro sistema.');
     } else {
       console.error('\nNo se pudo cerrar la sesión. Intente nuevamente.');
@@ -219,7 +240,6 @@ async function logout(user) {
     console.error(`Error al cerrar sesión: ${error.message}`);
   }
 }
-
 
 module.exports = {
   admissionMenu,
