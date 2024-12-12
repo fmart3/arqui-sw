@@ -72,10 +72,10 @@ async function mostrarTablero(user, pacientes) {
 
     // Encabezados del tablero
     console.log(
-      '| ID asignacion | Rut          | Nombre Completo        | Fecha Llegada | Hora Llegada | Categorización |'
+      '| ID asignacion | Rut          | Nombre Completo            | Fecha Llegada | Hora Llegada | Categorización |'
     );
     console.log(
-      '|---------------|--------------|------------------------|---------------|--------------|----------------|'
+      '|---------------|--------------|----------------------------|---------------|--------------|----------------|'
     );
 
     // Mostrar los datos
@@ -83,7 +83,7 @@ async function mostrarTablero(user, pacientes) {
       console.log(
         `| ${paciente.id_asignacion.toString().padEnd(13)} | ` +
         `${paciente.rut.padEnd(12)} | ` +
-        `${(paciente.nombres + ' ' + paciente.apellido_paterno).padEnd(22)} | ` +
+        `${(paciente.nombres + ' ' + paciente.apellido_paterno).padEnd(26)} | ` +
         `${paciente.fecha_llegada.padEnd(13)} | ` +
         `${paciente.hora_llegada.padEnd(12)} | ` +
         `${(paciente.categorizacion !== null ? paciente.categorizacion : 'X').toString().padEnd(14)} | `

@@ -11,12 +11,8 @@ async function atenderPaciente(idAsignacion) {
     const respuesta = await client(servicioAtenc, { accion: 'atender', contenido: idAsignacion });
 
     if (respuesta.status === 0) {
-      console.log('No se pudo atender al paciente.');
-      return;
-    }
-
-    if (respuesta.contenido == null) {
-      console.log('No se pudo obtener datos del paciente.');
+      //console.error('Error al obtener los detalles de la categorización:', respuesta.contenido || 'Datos no válidos.');
+      console.log("Número no corresponde a un paciente actual.")
       await pregunta('\nPresione Enter para continuar...');
       return;
     }
@@ -52,6 +48,7 @@ async function atenderPaciente(idAsignacion) {
         break;
 
       case '3':
+        const diagnostico = await pregunta('Diagnostico: ');
         await client(servicioAtenc, { accion: 'ingresarDiagnostico', contenido: { idAtencion, diagnostico } });
         break;
 

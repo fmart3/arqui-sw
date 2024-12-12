@@ -44,6 +44,7 @@ async function tomarSignosVitales(user, idCategorizacion, mostrarDetallesCategor
     console.error('Error al tomar signos vitales:', error.message);
     await pregunta('\nPresione Enter para continuar...');
   }
+  return;
 }
 
 // Función para categorizar
@@ -72,6 +73,7 @@ async function categorizarPaciente(user, idCategorizacion, mostrarDetallesCatego
     console.error('Error al categorizar al paciente:', error.message);
     await pregunta('\nPresione Enter para continuar...');
   }
+  return;
 }
 
 // Función para añadir observaciones
@@ -99,6 +101,7 @@ async function observaciones(user, idCategorizacion, mostrarDetallesCategorizaci
     console.error('Error al añadir observaciones:', error.message);
     await pregunta('\nPresione Enter para continuar...');
   }
+  return;
 }
 
 module.exports = {

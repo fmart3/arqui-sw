@@ -27,12 +27,14 @@ async function recepcionMenu(user) {
         await mostrarTablero(user);
         break;
       case '9':
-        return;
+        break;
       default:
         console.log('Opción no válida.');
         await pregunta('\nPresione Enter para continuar...');
+        break;
     }
   }
+  return;
 }
 
 // Función para mostrar el tablero principal
@@ -60,10 +62,10 @@ async function mostrarTablero(user) {
 
     // Encabezados del tablero
     console.log(
-      '| ID Categorización | Rut          | Nombre Completo        | Fecha Llegada | Hora Llegada | Categorización | Estado'
+      '| ID Categorización | Rut          | Nombre Completo            | Fecha Llegada | Hora Llegada | Categorización | Estado'
     );
     console.log(
-      '|-------------------|--------------|------------------------|---------------|--------------|----------------|--------------------------'
+      '|-------------------|--------------|----------------------------|---------------|--------------|----------------|--------------------------'
     );
 
     // Mostrar los datos
@@ -71,11 +73,11 @@ async function mostrarTablero(user) {
       console.log(
         `| ${paciente.id_categorizacion.toString().padEnd(17)} | ` +
         `${paciente.rut.padEnd(12)} | ` +
-        `${(paciente.nombres + ' ' + paciente.apellido_paterno).padEnd(22)} | ` +
+        `${(paciente.nombres + ' ' + paciente.apellido_paterno).padEnd(26)} | ` +
         `${paciente.fecha_llegada.padEnd(13)} | ` +
         `${paciente.hora_llegada.padEnd(12)} | ` +
         `${(paciente.categorizacion !== null ? paciente.categorizacion : 'X').toString().padEnd(14)} | ` +
-        `${paciente.estado.padEnd(24)}` 
+        `${paciente.estado.padEnd(24)}`
         //`${(paciente.prioridad !== null ? paciente.prioridad : 'N/A').toString().padEnd(9)} |`
       );
     });
@@ -85,6 +87,7 @@ async function mostrarTablero(user) {
     console.error('Error al mostrar el tablero de pacientes:', error.message);
     await pregunta('\nPresione Enter para continuar...');
   }
+  return;
 }
 
 // Función para mostrar detalles de una categorización
@@ -95,13 +98,16 @@ async function mostrarDetallesCategorizacion(user, idCategorizacion) {
 
     const respuesta = await client(servicioRecepcion, { accion: 'detalle', contenido: idCategorizacion });
 
-    if (respuesta.status === 0 || !respuesta.contenido) {
-      console.error('Error al obtener los detalles de la categorización:', respuesta.contenido || 'Datos no válidos.');
+    if (respuesta.status === 0) {
+      //console.error('Error al obtener los detalles de la categorización:', respuesta.contenido || 'Datos no válidos.');
+      console.log("Número no corresponde a un paciente actual.")
       await pregunta('\nPresione Enter para continuar...');
       return;
     }
 
     const detalles = respuesta.contenido;
+    const categorizacion = detalles.categorizacion;
+    const observaciones = detalles.admision.observaciones;
 
     console.log(`ID Categorización: ${detalles.idCategorizacion}`);
     console.log(`Rut: ${detalles.paciente.rut}`);
@@ -143,22 +149,39 @@ async function mostrarDetallesCategorizacion(user, idCategorizacion) {
         }
         break;
       case '3':
-        await categorizarPaciente(user, idCategorizacion, mostrarDetallesCategorizacion);
+        if (detalles.signosVitales == null || observaciones == null) {
+          console.log('\nPara categorizar un paciente, debe tomar los signos vitales y registrar las observaciones.');
+          await pregunta('\nPresione Enter para continuar...');
+          await mostrarDetallesCategorizacion(user, idCategorizacion);
+        } else if (categorizacion == null) {
+          await categorizarPaciente(user, idCategorizacion, mostrarDetallesCategorizacion);
+        }
+        console.log('\nEl paciente ya ha sido categorizado.');
+        await pregunta('\nPresione Enter para continuar...');
+        await mostrarDetallesCategorizacion(user, idCategorizacion);
         break;
       case '2':
-        await observaciones(user, idCategorizacion, mostrarDetallesCategorizacion);
+        if (observaciones == null) {
+          await observaciones(user, idCategorizacion, mostrarDetallesCategorizacion);
+        } else {
+          console.log('\nLas observaciones ya han sido registradas.');
+          await pregunta('\nPresione Enter para continuar...');
+          await mostrarDetallesCategorizacion(user, idCategorizacion);
+        }
         break;
       case '9':
-        return;
+        break;
       default:
         console.log('Opción no válida.');
         await pregunta('\nPresione Enter para continuar...');
         await mostrarDetallesCategorizacion(user, idCategorizacion);
+        break;
     }
   } catch (error) {
     console.error('Error al mostrar detalles de categorización:', error.message);
     await pregunta('\nPresione Enter para continuar...');
   }
+  return;
 }
 
 module.exports = {
