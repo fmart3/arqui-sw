@@ -14,6 +14,9 @@ async function procesarMensaje(data) {
 
       case 'licencia':
         return await licenciaPaciente(contenido);
+        
+      case 'asignarTratamiento':
+        return {status: 0, contenido: "Sistema de farmacia no diponible. No es posible aplicar tratamiento"};
 
       default:
         return { status: 0, contenido: 'Acción no reconocida.' };

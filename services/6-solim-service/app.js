@@ -1,13 +1,12 @@
-// app.js
-const { actualizarTablero, atenderPaciente, ingresarAnamnesis, registrarObservaciones, ingresarDiagnostico } = require('./service');
+const { } = require('./service');
 
 async function procesarMensaje(data) {
   const { accion, contenido } = data;
 
   try {
     switch (accion) {
-      case 'solicitud':
-        return await solicitud(contenido);
+      case 'solicitarMedicamentos':
+        return {status: 0, contenido: "Sistema de farmacia no diponible."};
 
       default:
         return { status: 0, contenido: 'Acción no reconocida.' };
