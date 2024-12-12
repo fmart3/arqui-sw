@@ -1,5 +1,3 @@
-// Cliente actualizado para manejar el menú en atención
-
 const { client } = require('./configClient');
 const { pregunta } = require('./inputHandler');
 
@@ -50,7 +48,7 @@ async function atenderPaciente(idAsignacion) {
 
       case '2':
         const observaciones = await pregunta('Observaciones: ');
-        await client(servicioAtenc, { accion: 'registrarObservaciones', contenido: {idAtencion, observaciones} });
+        await client(servicioAtenc, { accion: 'registrarObservaciones', contenido: { idAtencion, observaciones } });
         break;
 
       case '3':
@@ -58,7 +56,7 @@ async function atenderPaciente(idAsignacion) {
         break;
 
       case '4':
-        await client(servicioAtenc, { accion: 'asignarTratamiento', contenido: idAtencion });
+        await client(servicioAltam, { accion: 'asignarTratamiento', contenido: idAtencion });
         break;
 
       case '5':
@@ -80,8 +78,26 @@ async function atenderPaciente(idAsignacion) {
         break;
 
       case '9':
-        await client(servicioAltam, { accion: 'finalizarAtencion', contenido: idAtencion });
-        console.log('Atención finalizada.');
+        const indicaciones = await pregunta('Indicaciones: ');
+
+        if (
+          !indicaciones ||
+          indicaciones.trim() === '' ||
+          !respuesta.contenido ||
+          !respuesta.contenido.anamnesis ||
+          //!respuesta.contenido.diagnostico ||
+          !respuesta.contenido.observaciones_atencion
+        ) {
+          console.log('\nError: Hacen falta datos esenciales para completar la atención.');
+          console.log('Por favor, registre los datos que faltan antes de finalizar la atención.');
+          await pregunta('\nPresione Enter para regresar al menú de atención...');
+          break;
+        }
+
+        const respuestaAlta = await client(servicioAltam, { accion: 'alta', contenido: { idAtencion, indicaciones } });
+        await mostrarDatosAlta(respuestaAlta.contenido);
+        console.log('\nAtención finalizada.');
+        await pregunta('\nPresione Enter para continuar...');
         return;
 
       case '10':
@@ -125,6 +141,24 @@ async function mostrarDatos(contenido) {
   console.log(`Anamnesis: ${contenido.anamnesis || 'No registrada'}`);
   console.log(`Observaciones: ${contenido.observaciones_atencion || 'No registradas'}`);
   console.log(`Diagnóstico: ${contenido.diagnostico || 'No registrado'}`);
+}
+
+async function mostrarDatosAlta(contenido) {
+  console.log('\n--- Datos de Paciente ---');
+  console.log(`Rut: ${contenido.rut}`);
+  console.log(`Nombre: ${contenido.nombres} ${contenido.apellido_paterno} ${contenido.apellido_materno}`);
+  console.log(`Fecha de Nacimiento: ${contenido.fecha_nacimiento}`);
+  console.log(`Sexo: ${contenido.sexo}`);
+  console.log(`Motivo de Admisión: ${contenido.motivo}`);
+
+
+  console.log('\n--- Datos de Atención ---');
+  console.log(`Anamnesis: ${contenido.anamnesis || 'No registrada'}`);
+  console.log(`Observaciones: ${contenido.observaciones_atencion || 'No registradas'}`);
+  console.log(`Diagnóstico: ${contenido.id_diagnostico || 'No registrado'}`);
+
+  console.log('\n--- Datos de Alta ---');
+  console.log(`Indicaciones: ${contenido.indicaciones_alta || 'No registradas'}`);
 }
 
 module.exports = {
