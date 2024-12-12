@@ -1,7 +1,7 @@
 const { pregunta } = require('./inputHandler');
 const { client } = require('./configClient');
-const {asignarPacientes, desasignarPacientes} = require('./asignacion');
-const {atenderPaciente} = require('./atencion');
+const { asignarPacientes, desasignarPacientes } = require('./asignacion');
+const { atenderPaciente } = require('./atencion');
 
 const servicioAtenc = 'atenc';
 
@@ -19,6 +19,9 @@ async function medicoMenu(user) {
     await mostrarTablero(user, pacientes);
     console.log('\n\n\n1. Atender paciente');
     console.log('2. Actualizar tablero');
+    console.log('3. Consultar diagnosticos');
+    console.log('4. Consultar medicamentos');
+    console.log('5. Consultar centros de salud');
     console.log('9. Volver al menú principal');
 
     // Capturar la opción del usuario
@@ -33,6 +36,54 @@ async function medicoMenu(user) {
       case '2':
         await mostrarTablero(user, pacientes);
         break;
+      case '3':
+        const respuesta = await client(servicioAtenc, { accion: 'consultarDiagnosticos' });
+        console.clear();
+
+        if (respuesta.status === 0) {
+          console.log(respuesta.contenido);
+        } else {
+          console.log('|  ID  | Descripción');
+          console.log('|------|-------------------------');
+
+          for (const diagnostico of respuesta.contenido) {
+            const id = diagnostico.id.toString().padEnd(4);
+            const descripcion = diagnostico.descripcion.padEnd(39);
+            console.log(`| ${id} | ${descripcion}`);
+          }
+        }
+        await pregunta('\nPresione Enter para continuar...');
+        break;
+      case '4':
+        const respuesta1 = await client(servicioAtenc, { accion: 'consultarMedicamentos' });
+        console.clear();
+
+        console.log(respuesta1.contenido);
+
+        await pregunta('\nPresione Enter para continuar...');
+        break;
+      case '5':
+        const respuesta2 = await client(servicioAtenc, { accion: 'consultarCentros' });
+        console.clear();
+
+        if (respuesta2.status === 0) {
+          console.log(respuesta2.contenido);
+        } else {
+          console.log('|  ID  | Nombre del Centro                                  | Dirección                    ');
+          console.log('|------|----------------------------------------------------|------------------------------');
+
+          for (const centro of respuesta2.contenido) {
+            const id = centro.id.toString().padEnd(4);
+            const nombre = centro.nombre.padEnd(50);
+            const direccion = (centro.direccion || 'N/A').padEnd(30);
+            //const comuna = (centro.comuna || 'N/A').padEnd(22);
+            console.log(`| ${id} | ${nombre} | ${direccion} `);
+          }
+        }
+
+        await pregunta('\nPresione Enter para continuar...');
+        break;
+
       case '9':
         await desasignarPacientes();
         return;

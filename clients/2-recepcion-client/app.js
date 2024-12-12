@@ -107,7 +107,7 @@ async function mostrarDetallesCategorizacion(user, idCategorizacion) {
 
     const detalles = respuesta.contenido;
     const categorizacion = detalles.categorizacion;
-    const observaciones = detalles.admision.observaciones;
+    const observacioness = detalles.admision.observaciones;
 
     console.log(`ID Categorización: ${detalles.idCategorizacion}`);
     console.log(`Rut: ${detalles.paciente.rut}`);
@@ -149,7 +149,7 @@ async function mostrarDetallesCategorizacion(user, idCategorizacion) {
         }
         break;
       case '3':
-        if (detalles.signosVitales == null || observaciones == null) {
+        if (detalles.signosVitales == null || observacioness == null) {
           console.log('\nPara categorizar un paciente, debe tomar los signos vitales y registrar las observaciones.');
           await pregunta('\nPresione Enter para continuar...');
           await mostrarDetallesCategorizacion(user, idCategorizacion);
@@ -161,7 +161,7 @@ async function mostrarDetallesCategorizacion(user, idCategorizacion) {
         await mostrarDetallesCategorizacion(user, idCategorizacion);
         break;
       case '2':
-        if (observaciones == null) {
+        if (observacioness == null) {
           await observaciones(user, idCategorizacion, mostrarDetallesCategorizacion);
         } else {
           console.log('\nLas observaciones ya han sido registradas.');

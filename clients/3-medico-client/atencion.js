@@ -3,6 +3,7 @@ const { pregunta } = require('./inputHandler');
 
 const servicioAtenc = 'atenc';
 const servicioAltam = 'altam';
+const servicioSolim = 'solim';
 
 async function atenderPaciente(idAsignacion) {
   while (true) {
@@ -29,45 +30,83 @@ async function atenderPaciente(idAsignacion) {
     console.log('4. Asignar tratamiento');
     console.log('5. Solicitud de medicamentos');
     console.log('6. Consultar historial de atenciones');
-    console.log('7. Generar derivación (No implementado)');
-    console.log('8. Emitir licencia (No implementado)');
+    //console.log('7. Generar derivación (No implementado)');
+    //console.log('8. Emitir licencia (No implementado)');
     console.log('9. Finalizar atención');
     console.log('10. Mostrar tablero');
 
     const opcion = await pregunta('\nSeleccione una opción: ');
 
+    const detalles = respuesta.contenido;
+
     switch (opcion.trim()) {
       case '1':
-        const anamnesis = await pregunta('Anamnesis: ');
-        await client(servicioAtenc, { accion: 'ingresarAnamnesis', contenido: { idAtencion, anamnesis } });
+        if (detalles.anamnesis == null) {
+          const anamnesis = await pregunta('Anamnesis: ');
+          await client(servicioAtenc, { accion: 'ingresarAnamnesis', contenido: { idAtencion, anamnesis } });
+        } else {
+          console.log('\nYa se ha ingresado una Anamnesis.');
+          await pregunta('\nPresione Enter para continuar...');
+        }
         break;
 
       case '2':
-        const observaciones = await pregunta('Observaciones: ');
-        await client(servicioAtenc, { accion: 'registrarObservaciones', contenido: { idAtencion, observaciones } });
+
+        if (detalles.observaciones == null) {
+          const observaciones = await pregunta('Observaciones: ');
+          await client(servicioAtenc, { accion: 'registrarObservaciones', contenido: { idAtencion, observaciones } });
+        } else {
+          console.log('\nYa se han ingresado Observaciones.');
+          await pregunta('\nPresione Enter para continuar...');
+        }
         break;
 
       case '3':
-        const diagnostico = await pregunta('Diagnostico: ');
-        await client(servicioAtenc, { accion: 'ingresarDiagnostico', contenido: { idAtencion, diagnostico } });
+
+        if (detalles.id_diagnostico == null) {
+          const diagnostico = await pregunta('Diagnostico: ');
+          const respuestaDiagnostico = await client(servicioAtenc, { accion: 'ingresarDiagnostico', contenido: { idAtencion, diagnostico } });
+
+
+          if (respuestaDiagnostico.status === 1) {
+            console.log('\nDiagnóstico actualizado correctamente.');
+          } else {
+            console.error('\nError al actualizar diagnóstico:', respuestaDiagnostico.contenido || 'Ocurrió un problema.');
+          }
+
+          await pregunta('\nPresione Enter para continuar...');
+
+
+        } else {
+          console.log('\nYa se ha ingresado un Diagnostico.');
+          await pregunta('\nPresione Enter para continuar...');
+        }
         break;
 
       case '4':
-        await client(servicioAltam, { accion: 'asignarTratamiento', contenido: idAtencion });
+        const respuesta3 = await client(servicioAltam, { accion: 'asignarTratamiento' });
+        if (respuesta3.status === 0) {
+          console.log(respuesta3.contenido);
+        }
+        await pregunta('\nPresione Enter para continuar...');
         break;
 
       case '5':
-        await client(servicioAtenc, { accion: 'solicitarMedicamentos', contenido: idAtencion });
+        const respuesta0 = await client(servicioSolim, { accion: 'solicitarMedicamentos', contenido: idAtencion });
+        if (respuesta0.status === 0) {
+          console.log(respuesta0.contenido);
+        }
+        await pregunta('\nPresione Enter para continuar...');
         break;
 
       case '6':
         await client(servicioAtenc, { accion: 'consultarHistorial', contenido: idPaciente });
         break;
 
-      case '7':
-        console.log('Opción no implementada aún.');
-        await pregunta('\nPresione Enter para continuar...');
-        break;
+      //case '7':
+        //console.log('Opción no implementada aún.');
+        //await pregunta('\nPresione Enter para continuar...');
+        //break;
 
       case '8':
         console.log('Opción no implementada aún.');
@@ -82,7 +121,7 @@ async function atenderPaciente(idAsignacion) {
           indicaciones.trim() === '' ||
           !respuesta.contenido ||
           !respuesta.contenido.anamnesis ||
-          //!respuesta.contenido.diagnostico ||
+          !respuesta.contenido.id_diagnostico ||
           !respuesta.contenido.observaciones_atencion
         ) {
           console.log('\nError: Hacen falta datos esenciales para completar la atención.');
@@ -137,7 +176,7 @@ async function mostrarDatos(contenido) {
   console.log('\n--- Datos de Atención ---');
   console.log(`Anamnesis: ${contenido.anamnesis || 'No registrada'}`);
   console.log(`Observaciones: ${contenido.observaciones_atencion || 'No registradas'}`);
-  console.log(`Diagnóstico: ${contenido.diagnostico || 'No registrado'}`);
+  console.log(`Diagnóstico: ${contenido.id_diagnostico || 'No registrado'}`);
 }
 
 async function mostrarDatosAlta(contenido) {
@@ -156,6 +195,8 @@ async function mostrarDatosAlta(contenido) {
 
   console.log('\n--- Datos de Alta ---');
   console.log(`Indicaciones: ${contenido.indicaciones_alta || 'No registradas'}`);
+  // seleecione cuantos medicamentos va a prescribir 2
+  // nombre medicamento paracegtamol 500 gr, cantidad, frecuencia horas y duracion en dias
 }
 
 module.exports = {
